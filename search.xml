@@ -4,12 +4,68 @@
   
     
     <entry>
+      <title>无重复字符的最长子串</title>
+      <link href="/2023/05/31/blog3/"/>
+      <url>/2023/05/31/blog3/</url>
+      
+        <content type="html"><![CDATA[<h3 id="题目介绍"><a href="#题目介绍" class="headerlink" title="题目介绍"></a>题目介绍</h3><p>​题目链接：<a href="https://leetcode.cn/problems/longest-substring-without-repeating-characters/description/">3. 无重复字符的最长子串 - 力扣（Leetcode）</a></p><p>​给定一个字符串 <code>s</code> ，请你找出其中不含有重复字符的 <strong>最长子串</strong> 的长度。</p><p><strong>示例 1:</strong></p><pre><code>输入: s = &quot;abcabcbb&quot;输出: 3 解释: 因为无重复字符的最长子串是 &quot;abc&quot;，所以其长度为 3。</code></pre><p><strong>示例 2:</strong></p><pre><code>输入: s = &quot;bbbbb&quot;输出: 1解释: 因为无重复字符的最长子串是 &quot;b&quot;，所以其长度为 1。</code></pre><p><strong>示例 3:</strong></p><pre><code>输入: s = &quot;pwwkew&quot;输出: 3解释: 因为无重复字符的最长子串是 &quot;wke&quot;，所以其长度为 3。     请注意，你的答案必须是 子串 的长度，&quot;pwke&quot; 是一个子序列，不是子串。</code></pre><h3 id="题目思路"><a href="#题目思路" class="headerlink" title="题目思路"></a>题目思路</h3><p>​没啥好说的，一眼滑动窗口。。。</p><p>​以示例1为例，对于“abcabcbb”，定义两个指针（ left 和 right ），初始都指向字符串0位置，两个指针之间的字符串即为当前找到的子串，right指针向右遍历，使用hashmap记录出现过的字符和字符最后一次出现的位置，当前字串出现重复字符时（即hashmap中存在当前right指向的字符），将left指针移动到重复字符的下一个位置即可（map.get(s.charAt(i)) + 1），遍历过程中记录字串长度最大值。</p><h3 id="代码"><a href="#代码" class="headerlink" title="代码"></a>代码</h3><pre><code class="java">class Solution &#123;  public int lengthOfLongestSubstring(String s) &#123;​    if (s.length() &lt;=  1)&#123;​      return s.length();​    &#125;​    HashMap&lt;Character, Integer&gt; map = new HashMap&lt;Character, Integer&gt;();​    int ans = 0;​    int left = 0;​    for(int i = 0; i &lt; s.length(); i++)&#123;​      if(map.containsKey(s.charAt(i)))&#123;​        left = Math.max(left, map.get(s.charAt(i)) + 1);​      &#125;​      map.put(s.charAt(i), i);​      ans = Math.max(ans, i-left+1);​    &#125;​    return ans;  &#125;&#125;</code></pre>]]></content>
+      
+      
+      <categories>
+          
+          <category> 刷题笔记 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 算法和数据结构 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>MySQL索引失效情况</title>
+      <link href="/2023/05/31/blog2/"/>
+      <url>/2023/05/31/blog2/</url>
+      
+        <content type="html"><![CDATA[<h1 id="MySQL索引失效"><a href="#MySQL索引失效" class="headerlink" title="MySQL索引失效"></a>MySQL索引失效</h1><p>​简单介绍下几种MySQL索引失效的常见情况。</p><h3 id="1-数据准备"><a href="#1-数据准备" class="headerlink" title="1.数据准备"></a>1.数据准备</h3><p>​首先准备一张数据表user_info并建立索引</p><pre><code class="mysql">`CREATE TABLE `user_info` ( `id` int(8) unsigned NOT NULL AUTO_INCREMENT COMMENT &#39;ID&#39;, `number` varchar(12) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT &#39;编号&#39;, `username` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT &#39;用户名&#39;, `age` int(11) DEFAULT NULL COMMENT &#39;年龄&#39;, `birthday` datetime DEFAULT CURRENT_TIMESTAMP COMMENT &#39;生日&#39;, PRIMARY KEY (`id`), KEY `union_idx` (`number`,`username`,`age`), KEY `create_time_idx` (`birthday`) );`</code></pre><p>该表包含3个索引：</p><p>主键：id</p><p>联合索引：number、username、age</p><p>普通索引：birthday</p><p>然后插入一些数据</p><pre><code class="mysql">INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;1244&#39;, &#39;Mercury&#39;, 23, &#39;2000-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;3546&#39;, &#39;Diana&#39;, 12, &#39;2011-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;1124&#39;, &#39;Mars&#39;, 77, &#39;1946-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;6426&#39;, &#39;Saturn&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;3525&#39;, &#39;Eureka&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;5245&#39;, &#39;Mercury1&#39;, 23, &#39;2000-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;3235246&#39;, &#39;Diana1&#39;, 12, &#39;2011-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;6346&#39;, &#39;Mars1&#39;, 77, &#39;1946-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;623461&#39;, &#39;Saturn1&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;235&#39;, &#39;Eureka1&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;11244&#39;, &#39;Mercury3&#39;, 23, &#39;2000-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;13546&#39;, &#39;Diana3&#39;, 12, &#39;2011-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;112244&#39;, &#39;Mars3&#39;, 77, &#39;1946-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;643126&#39;, &#39;Saturn3&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;35215&#39;, &#39;Eureka3&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;52145&#39;, &#39;Mercury4&#39;, 23, &#39;2000-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;32235246&#39;, &#39;Diana4&#39;, 12, &#39;2011-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;6332446&#39;, &#39;Mars4&#39;, 77, &#39;1946-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;6231461&#39;, &#39;Saturn4&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;231115&#39;, &#39;Eureka4&#39;, 32, &#39;1991-01-01 00:00:00&#39;);</code></pre><p>注：测试MySQL版本为8.0.28</p><h3 id="2-案例测试"><a href="#2-案例测试" class="headerlink" title="2.案例测试"></a>2.案例测试</h3><h4 id="2-1-联合索引不满足最左匹配原则"><a href="#2-1-联合索引不满足最左匹配原则" class="headerlink" title="2.1 联合索引不满足最左匹配原则"></a>2.1 联合索引不满足最左匹配原则</h4><p>​最左前缀匹配原则：在MySQL建立联合索引时会遵守最左前缀匹配原则，即最左优先，在检索数据时从联合索引的最左列开始匹配。如本例中联合索引（number，username，age），若想查询走该索引，查询条件中应出现最左边的列，即number。</p><p>测试1：</p><pre><code class="mysql">explain select * from user_info where number = &#39;1244&#39;;</code></pre><p>运行结果：</p><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%951.png"></p><p>key为“union_idx”说明查询走了联合索引。</p><p>测试2：</p><pre><code class="mysql">explain select * from user_info where number = &#39;1244&#39; and age = 23;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%952.png"></p><p>测试2结果中‘key_len’与测试1相同，说明该查询虽然走了联合索引，但因未满足最左匹配原则（查询条件中未出现username），导致username之后的联合索引失效。若number使用范围查询如number&gt;‘1244’，后面的查询条件即使有username也不会生效，这里不做测试。</p><p>但是where后面查询列出现顺序不会影响索引，如</p><p>测试3：</p><pre><code class="mysql">explain select * from user_info where username = &#39;Mercury&#39; and number = &#39;1244&#39;;explain select * from user_info where number = &#39;1244&#39; and username = &#39;Mercury&#39;;</code></pre><p>上面两条语句‘ken_len’相同</p><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%953.png" alt="image-20230531203957562"></p><h4 id="2-2-索引列使用数学运算"><a href="#2-2-索引列使用数学运算" class="headerlink" title="2.2 索引列使用数学运算"></a>2.2 索引列使用数学运算</h4><p>测试4：</p><pre><code class="mysql">explain select * from user_info where id + 1 = 2;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%954.png"></p><p>查询类型为全表扫面，并未使用索引</p><h4 id="2-3-隐式类型转换"><a href="#2-3-隐式类型转换" class="headerlink" title="2.3 隐式类型转换"></a>2.3 隐式类型转换</h4><p>测试5：</p><pre><code class="mysql">explain select * from user_info where number = 1244;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%955.png" alt="测试5"></p><p>number字段为varchar类型，而查询条件为int，类型不匹配导致索引失效。</p><h4 id="2-4模糊查询以-开头"><a href="#2-4模糊查询以-开头" class="headerlink" title="2.4模糊查询以%开头"></a>2.4模糊查询以%开头</h4><p>测试6：</p><pre><code class="mysql">explain select * from user_info where number like &#39;%2&#39;;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%956.png" alt="测试6"></p><h4 id="2-5-使用or"><a href="#2-5-使用or" class="headerlink" title="2.5 使用or"></a>2.5 使用or</h4><p>测试7：</p><pre><code class="mysql">explain select * from user_info where id = 1 or age = 23;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%957.png" alt="测试7"></p><p>age列无索引，导致前面id列索引失效。使用or时切记两边查询条件都要有索引。</p><h4 id="2-6索引列使用函数"><a href="#2-6索引列使用函数" class="headerlink" title="2.6索引列使用函数"></a>2.6索引列使用函数</h4><p>测试8：</p><p>explain select * from user_info where SUBSTR(number, 2,3) &#x3D; ‘12’;</p><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%958.png" alt="测试8"></p><h4 id="2-7两列作比较或者运算"><a href="#2-7两列作比较或者运算" class="headerlink" title="2.7两列作比较或者运算"></a>2.7两列作比较或者运算</h4><p>测试9：</p><pre><code class="mysql">explain select * from user_info where id &lt; age;explain select * from user_info where id + age = 25;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%959.png" alt="测试9"></p><h4 id="2-8其他"><a href="#2-8其他" class="headerlink" title="2.8其他"></a>2.8其他</h4><p>​使用不等于&lt;&gt;，not in， not exists， is not null 以及MySQL优化器认为走全表扫描效率更高的查询。好累啊不想做测试了，开摆。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 学习笔记 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> MySQL </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>Redis持久化</title>
       <link href="/2023/05/31/blog1/"/>
       <url>/2023/05/31/blog1/</url>
       
         <content type="html"><![CDATA[<h1 id="1-Redis持久化"><a href="#1-Redis持久化" class="headerlink" title="1.Redis持久化"></a>1.Redis持久化</h1><p>Redis有两种持久化方案：</p><ul><li>RDB持久化</li><li>AOF持久化</li></ul><h2 id="1-1-RDB"><a href="#1-1-RDB" class="headerlink" title="1.1.RDB"></a>1.1.RDB</h2><p>RDB全称Redis Database Backup file（Redis数据备份文件），RDB其实就是把数据以快照的形式保存在磁盘上。什么是快照呢，你可以理解成把当前时刻的数据拍成一张照片保存下来。</p><p>RDB持久化是指在指定的时间间隔内将内存中的数据集快照写入磁盘。也是默认的持久化方式，这种方式是就是将内存中数据以快照的方式写入到二进制文件中，默认的文件名为dump.rdb。</p><h3 id="1-1-1-RDB执行"><a href="#1-1-1-RDB执行" class="headerlink" title="1.1.1.RDB执行"></a>1.1.1.RDB执行</h3><p>RDB持久化在四种情况下会执行：</p><ul><li>执行save命令</li><li>执行bgsave命令</li><li>Redis停机时</li><li>触发RDB条件时</li></ul><p><strong>1）save命令</strong></p><p>save命令会导致主进程执行RDB，这个过程中其它所有命令都会被阻塞。</p><p><strong>2）bgsave命令</strong></p><p>bgsave命令执行后Redis执行fork操作创建子进程完成RDB，主进程可以继续处理用户请求，不会阻塞。</p><p><strong>3）停机时</strong></p><p>Redis停机时会执行一次save命令，实现RDB持久化。</p><p><strong>4）触发RDB条件</strong></p><p>Redis内部有触发RDB的机制，可以在redis.conf文件中找到，格式如下：</p><pre><code class="properties"># 下面的配置代表600秒内如果至少有10个key被修改，则执行bgsavesave 600 10  </code></pre><p>RDB的其它配置也可以在redis.conf文件中设置：</p><pre><code class="properties"># 是否进行压缩（会耗费cpu资源）rdbcompression yes# RDB文件保存名称（默认为dump.rdb）dbfilename dump.rdb  </code></pre><h3 id="1-1-2-RDB原理"><a href="#1-1-2-RDB原理" class="headerlink" title="1.1.2.RDB原理"></a>1.1.2.RDB原理</h3><p>bgsave开始时会fork主进程得到子进程，子进程共享主进程的内存数据。完成fork后读取内存数据并写入 RDB 文件。</p><p>fork采用的是copy-on-write技术：</p><ul><li>当主进程执行读操作时，访问共享内存；</li><li>当主进程执行写操作时，则会拷贝一份数据，执行写操作。</li></ul><p><img src="/imgs/blog1/image-20210725151319695-16855170885551.png"></p><h2 id="1-2-AOF"><a href="#1-2-AOF" class="headerlink" title="1.2.AOF"></a>1.2.AOF</h2><h3 id="1-2-1-AOF原理"><a href="#1-2-1-AOF原理" class="headerlink" title="1.2.1.AOF原理"></a>1.2.1.AOF原理</h3><p>AOF全称为Append Only File（追加文件）。Redis处理的每一个写命令都会记录在AOF文件，可以看做是命令日志文件。</p><h3 id="1-2-2-AOF配置"><a href="#1-2-2-AOF配置" class="headerlink" title="1.2.2.AOF配置"></a>1.2.2.AOF配置</h3><p>AOF默认是关闭的，需要修改redis.conf配置文件来开启AOF：</p><pre><code class="properties"># 是否开启AOF功能，默认是noappendonly yes</code></pre><p>AOF的命令记录的频率也可以通过redis.conf文件来配：</p><pre><code class="properties"># 每执行一次写命令，立即记录appendfsync always # 每隔1秒将缓冲区数据写到AOF文件（默认）appendfsync everysec # 由操作系统决定何时将缓冲区内容写回磁盘appendfsync no</code></pre><p>三种策略对比：</p><p><img src="/imgs/blog1/image-20210725151654046-16855171063852.png"></p><h3 id="1-2-3-AOF文件重写"><a href="#1-2-3-AOF文件重写" class="headerlink" title="1.2.3.AOF文件重写"></a>1.2.3.AOF文件重写</h3><p>AOF的方式也同时带来了另一个问题。持久化文件会变的越来越大。为了压缩aof的持久化文件。redis提供了bgrewriteaof命令。将内存中的数据以命令的方式保存到临时文件中，同时会fork出一条新进程来将文件重写。</p><p>Redis也会在触发阈值时自动去重写AOF文件。阈值也可以在redis.conf中配置：</p><pre><code class="properties"># AOF文件相比上次增长超过多少百分比则触发bgrewriteaofauto-aof-rewrite-percentage 100# AOF文件达到一定大小触发bgrewriteaofauto-aof-rewrite-min-size 64mb </code></pre><p>重写aof文件的操作，并没有读取旧的aof文件，而是将整个内存中的数据库内容用命令的方式重写了一个新的aof文件，这点和快照有点类似。</p><h2 id="1-3-RDB与AOF对比"><a href="#1-3-RDB与AOF对比" class="headerlink" title="1.3.RDB与AOF对比"></a>1.3.RDB与AOF对比</h2><p>RDB和AOF各有优缺点，在实际开发中一般会<strong>结合</strong>两者来使用。</p><p><img src="/imgs/blog1/image-20210725151940515-16855171206073.png"></p>]]></content>
       
+      
+      <categories>
+          
+          <category> 学习笔记 </category>
+          
+      </categories>
       
       
         <tags>
