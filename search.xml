@@ -4,31 +4,6 @@
   
     
     <entry>
-      <title>图解HTTP</title>
-      <link href="/2023/06/01/blog5/"/>
-      <url>/2023/06/01/blog5/</url>
-      
-        <content type="html"><![CDATA[<pre><code class="text">&#123;% pdf /pdf/图解HTTP.pdf %&#125;</code></pre>]]></content>
-      
-      
-      <categories>
-          
-          <category> 好书分享 </category>
-          
-      </categories>
-      
-      
-        <tags>
-            
-            <tag> 网络编程 </tag>
-            
-        </tags>
-      
-    </entry>
-    
-    
-    
-    <entry>
       <title>为什么Redis集群分片最大槽数是16384个</title>
       <link href="/2023/06/01/blog4/"/>
       <url>/2023/06/01/blog4/</url>
