@@ -4,6 +4,31 @@
   
     
     <entry>
+      <title>礼盒的最大甜蜜度</title>
+      <link href="/2023/06/01/blog5/"/>
+      <url>/2023/06/01/blog5/</url>
+      
+        <content type="html"><![CDATA[<h3 id="题目介绍"><a href="#题目介绍" class="headerlink" title="题目介绍"></a>题目介绍</h3><p>​题目链接：<a href="https://leetcode.cn/problems/longest-substring-without-repeating-characters/description/"><a href="https://leetcode.cn/problems/maximum-tastiness-of-candy-basket/description/">2517. 礼盒的最大甜蜜度 - 力扣（Leetcode）</a></a></p><p>​给你一个正整数数组 <code>price</code> ，其中 <code>price[i]</code> 表示第 <code>i</code> 类糖果的价格，另给你一个正整数 <code>k</code> 。</p><p>商店组合 <code>k</code> 类 <strong>不同</strong> 糖果打包成礼盒出售。礼盒的 <strong>甜蜜度</strong> 是礼盒中任意两种糖果 <strong>价格</strong> 绝对差的最小值。</p><p>返回礼盒的 <strong>最大</strong> 甜蜜度<em>。</em></p><p><strong>示例 1：</strong></p><pre><code>输入：price = [13,5,1,8,21,2], k = 3输出：8解释：选出价格分别为 [13,5,21] 的三类糖果。礼盒的甜蜜度为 min(|13 - 5|, |13 - 21|, |5 - 21|) = min(8, 8, 16) = 8 。可以证明能够取得的最大甜蜜度就是 8 。</code></pre><p><strong>示例 2：</strong></p><pre><code>输入：price = [1,3,1], k = 2输出：2解释：选出价格分别为 [1,3] 的两类糖果。 礼盒的甜蜜度为 min(|1 - 3|) = min(2) = 2 。可以证明能够取得的最大甜蜜度就是 2 。</code></pre><p><strong>示例 3：</strong></p><pre><code>输入：price = [7,7,7,7], k = 2输出：0解释：从现有的糖果中任选两类糖果，甜蜜度都会是 0 。</code></pre><h3 id="题目思路"><a href="#题目思路" class="headerlink" title="题目思路"></a>题目思路</h3><p>​最小最大，基本要想到二分了，直接二分甜蜜值，因为选择的差值跟顺序无关，我们可以排序后贪心，当前选择大于之前选择加甜蜜值就统计答案一次，如果最终次数大于等于tastiness，说明甜蜜值还可以更大，收缩左边界，否则收缩右边界。</p><h3 id="代码"><a href="#代码" class="headerlink" title="代码"></a>代码</h3><pre><code class="java">class Solution &#123;  public int maximumTastiness(int[] price, int k) &#123;​    Arrays.sort(price);​    int left = 0, right = price[price.length - 1];​    while (left +1 != right) &#123;​      int mid = (left + right) / 2;​      if (check(price, k, mid)) &#123;​        left = mid;​      &#125; else &#123;​        right = mid;​      &#125;​    &#125;​    return left;  &#125;  public boolean check(int[] price, int k, int tastiness) &#123;​    int prev = Integer.MIN_VALUE / 2;​    int cnt = 0;​    for (int p : price) &#123;​      if (p - prev &gt;= tastiness) &#123;​        cnt++;​        prev = p;​      &#125;​    &#125;​    return cnt &gt;= k;  &#125;&#125;</code></pre><p>甜蜜的祝自己节日快乐</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 刷题笔记 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 算法和数据结构 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>为什么Redis集群分片最大槽数是16384个</title>
       <link href="/2023/06/01/blog4/"/>
       <url>/2023/06/01/blog4/</url>
