@@ -1,0 +1,561 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>软件设计原则 | Mercury个人博客</title><meta name="author" content="Mercury"><meta name="copyright" content="Mercury"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="在软件开发中，为了提高软件系统的可维护性和可复用性，增加软件的可扩展性和灵活性，程序员要尽量根据6条原则来开发程序，从而提高软件开发效率、节约软件开发成本和维护成本。 开闭原则对扩展开放，对修改关闭。在程序需要进行拓展的时候，不能去修改原有的代码，实现一个热插拔的效果。简言之，是为了使程序的扩展性好，易于维护和升级。 想要达到这样的效果，我们需要使用接口和抽象类。 因为抽象灵活性好，适应性广，只要">
+<meta property="og:type" content="article">
+<meta property="og:title" content="软件设计原则">
+<meta property="og:url" content="http://example.com/2023/06/25/blog25/index.html">
+<meta property="og:site_name" content="Mercury个人博客">
+<meta property="og:description" content="在软件开发中，为了提高软件系统的可维护性和可复用性，增加软件的可扩展性和灵活性，程序员要尽量根据6条原则来开发程序，从而提高软件开发效率、节约软件开发成本和维护成本。 开闭原则对扩展开放，对修改关闭。在程序需要进行拓展的时候，不能去修改原有的代码，实现一个热插拔的效果。简言之，是为了使程序的扩展性好，易于维护和升级。 想要达到这样的效果，我们需要使用接口和抽象类。 因为抽象灵活性好，适应性广，只要">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/img/avatar.jpg">
+<meta property="article:published_time" content="2023-06-25T13:18:39.000Z">
+<meta property="article:modified_time" content="2023-06-25T13:20:14.800Z">
+<meta property="article:author" content="Mercury">
+<meta property="article:tag" content="设计模式">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/img/avatar.jpg"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://example.com/2023/06/25/blog25/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"languages":{"hits_empty":"找不到您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: undefined,
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '软件设计原则',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2023-06-25 21:20:14'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+    win.getCSS = (url,id = false) => new Promise((resolve, reject) => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = url
+      if (id) link.id = id
+      link.onerror = reject
+      link.onload = link.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        link.onload = link.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(link)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><meta name="generator" content="Hexo 6.3.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="/img/avatar.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">25</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">10</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-graduation-cap"></i><span> 博文</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/categories/"><i class="fa-fw fa fa-archive"></i><span> 分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fa fa-folder-open"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/comment/"><i class="fa-fw fa fa-paper-plane"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于作者</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('/img/default_top_img.jpg')"><nav id="nav"><span id="blog-info"><a href="/" title="Mercury个人博客"><span class="site-name">Mercury个人博客</span></a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search" href="javascript:void(0);"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-graduation-cap"></i><span> 博文</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/categories/"><i class="fa-fw fa fa-archive"></i><span> 分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fa fa-folder-open"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/comment/"><i class="fa-fw fa fa-paper-plane"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于作者</span></a></div></div><div id="toggle-menu"><a class="site-page" href="javascript:void(0);"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">软件设计原则</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2023-06-25T13:18:39.000Z" title="发表于 2023-06-25 21:18:39">2023-06-25</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2023-06-25T13:20:14.800Z" title="更新于 2023-06-25 21:20:14">2023-06-25</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="软件设计原则"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h1 id=""><a href="#" class="headerlink" title=""></a></h1><p>在软件开发中，为了提高软件系统的可维护性和可复用性，增加软件的可扩展性和灵活性，程序员要尽量根据6条原则来开发程序，从而提高软件开发效率、节约软件开发成本和维护成本。</p>
+<h2 id="开闭原则"><a href="#开闭原则" class="headerlink" title="开闭原则"></a>开闭原则</h2><p><strong>对扩展开放，对修改关闭</strong>。在程序需要进行拓展的时候，不能去修改原有的代码，实现一个热插拔的效果。简言之，是为了使程序的扩展性好，易于维护和升级。</p>
+<p>想要达到这样的效果，我们需要使用接口和抽象类。</p>
+<p>因为抽象灵活性好，适应性广，只要抽象的合理，可以基本保持软件架构的稳定。而软件中易变的细节可以从抽象派生来的实现类来进行扩展，当软件需要发生变化时，只需要根据需求重新派生一个实现类来扩展就可以了。</p>
+<p>下面以 <code>搜狗输入法</code> 的皮肤为例介绍开闭原则的应用。</p>
+<p>【例】<code>搜狗输入法</code> 的皮肤设计。</p>
+<p>分析：<code>搜狗输入法</code> 的皮肤是输入法背景图片、窗口颜色和声音等元素的组合。用户可以根据自己的喜爱更换自己的输入法的皮肤，也可以从网上下载新的皮肤。这些皮肤有共同的特点，可以为其定义一个抽象类（AbstractSkin），而每个具体的皮肤（DefaultSpecificSkin和HeimaSpecificSkin）是其子类。用户窗体可以根据需要选择或者增加新的主题，而不需要修改原代码，所以它是满足开闭原则的。</p>
+<p><img src="/../imgs/blog25/open-close.png"></p>
+<h2 id="里氏代换原则"><a href="#里氏代换原则" class="headerlink" title="里氏代换原则"></a>里氏代换原则</h2><p>里氏代换原则是面向对象设计的基本原则之一。</p>
+<p>里氏代换原则：任何基类可以出现的地方，子类一定可以出现。通俗理解：子类可以扩展父类的功能，但不能改变父类原有的功能。换句话说，子类继承父类时，除添加新的方法完成新增功能外，尽量不要重写父类的方法。</p>
+<p>如果通过重写父类的方法来完成新的功能，这样写起来虽然简单，但是整个继承体系的可复用性会比较差，特别是运用多态比较频繁时，程序运行出错的概率会非常大。</p>
+<p>下面看一个里氏替换原则中经典的一个例子</p>
+<p>【例】正方形不是长方形。</p>
+<p>在数学领域里，正方形毫无疑问是长方形，它是一个长宽相等的长方形。所以，我们开发的一个与几何图形相关的软件系统，就可以顺理成章的让正方形继承自长方形。</p>
+<p><img src="/../imgs/blog25/%E6%AD%A3%E6%96%B9%E5%BD%A2%E4%B8%8D%E6%98%AF%E9%95%BF%E6%96%B9%E5%BD%A2.png"></p>
+<p>代码如下：</p>
+<p><strong>长方形类（Rectangle）：</strong></p>
+<pre><code class="java">public class Rectangle &#123;
+    private double length;
+    private double width;
+
+    public double getLength() &#123;
+        return length;
+    &#125;
+
+    public void setLength(double length) &#123;
+        this.length = length;
+    &#125;
+
+    public double getWidth() &#123;
+        return width;
+    &#125;
+
+    public void setWidth(double width) &#123;
+        this.width = width;
+    &#125;
+&#125;
+</code></pre>
+<p><strong>正方形（Square）：</strong></p>
+<p>由于正方形的长和宽相同，所以在方法setLength和setWidth中，对长度和宽度都需要赋相同值。</p>
+<pre><code class="java">public class Square extends Rectangle &#123;
+    
+    public void setWidth(double width) &#123;
+        super.setLength(width);
+        super.setWidth(width);
+    &#125;
+
+    public void setLength(double length) &#123;
+        super.setLength(length);
+        super.setWidth(length);
+    &#125;
+&#125;
+</code></pre>
+<p>类RectangleDemo是我们的软件系统中的一个组件，它有一个resize方法依赖基类Rectangle，resize方法是RectandleDemo类中的一个方法，用来实现宽度逐渐增长的效果。</p>
+<pre><code class="java">public class RectangleDemo &#123;
+    
+    public static void resize(Rectangle rectangle) &#123;
+        while (rectangle.getWidth() &lt;= rectangle.getLength()) &#123;
+            rectangle.setWidth(rectangle.getWidth() + 1);
+        &#125;
+    &#125;
+
+    //打印长方形的长和宽
+    public static void printLengthAndWidth(Rectangle rectangle) &#123;
+        System.out.println(rectangle.getLength());
+        System.out.println(rectangle.getWidth());
+    &#125;
+
+    public static void main(String[] args) &#123;
+        Rectangle rectangle = new Rectangle();
+        rectangle.setLength(20);
+        rectangle.setWidth(10);
+        resize(rectangle);
+        printLengthAndWidth(rectangle);
+
+        System.out.println(&quot;============&quot;);
+
+        Rectangle rectangle1 = new Square();
+        rectangle1.setLength(10);
+        resize(rectangle1);
+        printLengthAndWidth(rectangle1);
+    &#125;
+&#125;
+</code></pre>
+<p>我们运行一下这段代码就会发现，假如我们把一个普通长方形作为参数传入resize方法，就会看到长方形宽度逐渐增长的效果，当宽度大于长度,代码就会停止，这种行为的结果符合我们的预期；假如我们再把一个正方形作为参数传入resize方法后，就会看到正方形的宽度和长度都在不断增长，代码会一直运行下去，直至系统产生溢出错误。所以，普通的长方形是适合这段代码的，正方形不适合。<br>我们得出结论：在resize方法中，Rectangle类型的参数是不能被Square类型的参数所代替，如果进行了替换就得不到预期结果。因此，Square类和Rectangle类之间的继承关系违反了里氏代换原则，它们之间的继承关系不成立，正方形不是长方形。</p>
+<p>如何改进呢？此时我们需要重新设计他们之间的关系。抽象出来一个四边形接口(Quadrilateral)，让Rectangle类和Square类实现Quadrilateral接口</p>
+<img src="../imgs/blog25/%E6%AD%A3%E6%96%B9%E5%BD%A2%E4%B8%8D%E6%98%AF%E9%95%BF%E6%96%B9%E5%BD%A2%E6%94%B9%E8%BF%9B.png" style="zoom:80%;" />
+
+
+
+<h2 id="依赖倒转原则"><a href="#依赖倒转原则" class="headerlink" title="依赖倒转原则"></a>依赖倒转原则</h2><p>高层模块不应该依赖低层模块，两者都应该依赖其抽象；抽象不应该依赖细节，细节应该依赖抽象。简单的说就是要求对抽象进行编程，不要对实现进行编程，这样就降低了客户与实现模块间的耦合。</p>
+<p>下面看一个例子来理解依赖倒转原则</p>
+<p>【例】组装电脑</p>
+<p>现要组装一台电脑，需要配件cpu，硬盘，内存条。只有这些配置都有了，计算机才能正常的运行。选择cpu有很多选择，如Intel，AMD等，硬盘可以选择希捷，西数等，内存条可以选择金士顿，海盗船等。</p>
+<p><strong>类图如下：</strong></p>
+<img src="../imgs/blog25/%E4%BE%9D%E8%B5%96%E5%80%92%E8%BD%AC%E5%8E%9F%E5%88%99.png" style="zoom:80%;" />
+
+<p>代码如下：</p>
+<p><strong>希捷硬盘类（XiJieHardDisk）:</strong></p>
+<pre><code class="java">public class XiJieHardDisk implements HardDisk &#123;
+
+    public void save(String data) &#123;
+        System.out.println(&quot;使用希捷硬盘存储数据&quot; + data);
+    &#125;
+
+    public String get() &#123;
+        System.out.println(&quot;使用希捷希捷硬盘取数据&quot;);
+        return &quot;数据&quot;;
+    &#125;
+&#125;
+</code></pre>
+<p><strong>Intel处理器（IntelCpu）：</strong></p>
+<pre><code class="java">public class IntelCpu implements Cpu &#123;
+
+    public void run() &#123;
+        System.out.println(&quot;使用Intel处理器&quot;);
+    &#125;
+&#125;
+</code></pre>
+<p><strong>金士顿内存条（KingstonMemory）：</strong></p>
+<pre><code class="java">public class KingstonMemory implements Memory &#123;
+
+    public void save() &#123;
+        System.out.println(&quot;使用金士顿作为内存条&quot;);
+    &#125;
+&#125;
+</code></pre>
+<p><strong>电脑（Computer）：</strong></p>
+<pre><code class="java">public class Computer &#123;
+
+    private XiJieHardDisk hardDisk;
+    private IntelCpu cpu;
+    private KingstonMemory memory;
+
+    public IntelCpu getCpu() &#123;
+        return cpu;
+    &#125;
+
+    public void setCpu(IntelCpu cpu) &#123;
+        this.cpu = cpu;
+    &#125;
+
+    public KingstonMemory getMemory() &#123;
+        return memory;
+    &#125;
+
+    public void setMemory(KingstonMemory memory) &#123;
+        this.memory = memory;
+    &#125;
+
+    public XiJieHardDisk getHardDisk() &#123;
+        return hardDisk;
+    &#125;
+
+    public void setHardDisk(XiJieHardDisk hardDisk) &#123;
+        this.hardDisk = hardDisk;
+    &#125;
+
+    public void run() &#123;
+        System.out.println(&quot;计算机工作&quot;);
+        cpu.run();
+        memory.save();
+        String data = hardDisk.get();
+        System.out.println(&quot;从硬盘中获取的数据为：&quot; + data);
+    &#125;
+&#125;
+</code></pre>
+<p><strong>测试类（TestComputer）：</strong></p>
+<p>测试类用来组装电脑。</p>
+<pre><code class="java">public class TestComputer &#123;
+    public static void main(String[] args) &#123;
+        Computer computer = new Computer();
+        computer.setHardDisk(new XiJieHardDisk());
+        computer.setCpu(new IntelCpu());
+        computer.setMemory(new KingstonMemory());
+
+        computer.run();
+    &#125;
+&#125;
+</code></pre>
+<p>上面代码可以看到已经组装了一台电脑，但是似乎组装的电脑的cpu只能是Intel的，内存条只能是金士顿的，硬盘只能是希捷的，这对用户肯定是不友好的，用户有了机箱肯定是想按照自己的喜好，选择自己喜欢的配件。</p>
+<p>根据依赖倒转原则进行改进：</p>
+<p>代码我们只需要修改Computer类，让Computer类依赖抽象（各个配件的接口），而不是依赖于各个组件具体的实现类。</p>
+<p><strong>类图如下：</strong></p>
+<img src="../imgs/blog25/%E4%BE%9D%E8%B5%96%E5%80%92%E8%BD%AC%E5%8E%9F%E5%88%99%E6%94%B9%E8%BF%9B.png" alt="image-20191229173554296" style="zoom:70%;" />
+
+<p><strong>电脑（Computer）：</strong></p>
+<pre><code class="java">public class Computer &#123;
+
+    private HardDisk hardDisk;
+    private Cpu cpu;
+    private Memory memory;
+
+    public HardDisk getHardDisk() &#123;
+        return hardDisk;
+    &#125;
+
+    public void setHardDisk(HardDisk hardDisk) &#123;
+        this.hardDisk = hardDisk;
+    &#125;
+
+    public Cpu getCpu() &#123;
+        return cpu;
+    &#125;
+
+    public void setCpu(Cpu cpu) &#123;
+        this.cpu = cpu;
+    &#125;
+
+    public Memory getMemory() &#123;
+        return memory;
+    &#125;
+
+    public void setMemory(Memory memory) &#123;
+        this.memory = memory;
+    &#125;
+
+    public void run() &#123;
+        System.out.println(&quot;计算机工作&quot;);
+    &#125;
+&#125;
+</code></pre>
+<p>面向对象的开发很好的解决了这个问题，一般情况下抽象的变化概率很小，让用户程序依赖于抽象，实现的细节也依赖于抽象。即使实现细节不断变动，只要抽象不变，客户程序就不需要变化。这大大降低了客户程序与实现细节的耦合度。</p>
+<h2 id="接口隔离原则"><a href="#接口隔离原则" class="headerlink" title="接口隔离原则"></a>接口隔离原则</h2><p>客户端不应该被迫依赖于它不使用的方法；一个类对另一个类的依赖应该建立在最小的接口上。</p>
+<p>下面看一个例子来理解接口隔离原则</p>
+<p>【例】安全门案例</p>
+<p>我们需要创建一个<code>黑马</code>品牌的安全门，该安全门具有防火、防水、防盗的功能。可以将防火，防水，防盗功能提取成一个接口，形成一套规范。类图如下：</p>
+<p><img src="/../imgs/blog25/%E6%8E%A5%E5%8F%A3%E9%9A%94%E7%A6%BB%E5%8E%9F%E5%88%99.png"></p>
+<p>上面的设计我们发现了它存在的问题，黑马品牌的安全门具有防盗，防水，防火的功能。现在如果我们还需要再创建一个传智品牌的安全门，而该安全门只具有防盗、防水功能呢？很显然如果实现SafetyDoor接口就违背了接口隔离原则，那么我们如何进行修改呢？看如下类图：</p>
+<p><img src="/../imgs/blog25/%E6%8E%A5%E5%8F%A3%E9%9A%94%E7%A6%BB%E5%8E%9F%E5%88%991.png"></p>
+<p>代码如下：</p>
+<p><strong>AntiTheft（接口）：</strong></p>
+<pre><code class="java">public interface AntiTheft &#123;
+    void antiTheft();
+&#125;
+</code></pre>
+<p><strong>Fireproof（接口）：</strong></p>
+<pre><code class="java">public interface Fireproof &#123;
+    void fireproof();
+&#125;
+</code></pre>
+<p><strong>Waterproof（接口）：</strong></p>
+<pre><code class="java">public interface Waterproof &#123;
+    void waterproof();
+&#125;
+</code></pre>
+<p><strong>HeiMaSafetyDoor（类）：</strong></p>
+<pre><code class="java">public class HeiMaSafetyDoor implements AntiTheft,Fireproof,Waterproof &#123;
+    public void antiTheft() &#123;
+        System.out.println(&quot;防盗&quot;);
+    &#125;
+
+    public void fireproof() &#123;
+        System.out.println(&quot;防火&quot;);
+    &#125;
+
+
+    public void waterproof() &#123;
+        System.out.println(&quot;防水&quot;);
+    &#125;
+&#125;
+</code></pre>
+<p><strong>ItcastSafetyDoor（类）：</strong></p>
+<pre><code class="java">public class ItcastSafetyDoor implements AntiTheft,Fireproof &#123;
+    public void antiTheft() &#123;
+        System.out.println(&quot;防盗&quot;);
+    &#125;
+
+    public void fireproof() &#123;
+        System.out.println(&quot;防火&quot;);
+    &#125;
+&#125;
+</code></pre>
+<h2 id="迪米特法则"><a href="#迪米特法则" class="headerlink" title="迪米特法则"></a>迪米特法则</h2><p>迪米特法则又叫最少知识原则。</p>
+<p>只和你的直接朋友交谈，不跟“陌生人”说话（Talk only to your immediate friends and not to strangers）。</p>
+<p>其含义是：如果两个软件实体无须直接通信，那么就不应当发生直接的相互调用，可以通过第三方转发该调用。其目的是降低类之间的耦合度，提高模块的相对独立性。</p>
+<p>迪米特法则中的“朋友”是指：当前对象本身、当前对象的成员对象、当前对象所创建的对象、当前对象的方法参数等，这些对象同当前对象存在关联、聚合或组合关系，可以直接访问这些对象的方法。</p>
+<p>下面看一个例子来理解迪米特法则</p>
+<p>【例】明星与经纪人的关系实例</p>
+<p>明星由于全身心投入艺术，所以许多日常事务由经纪人负责处理，如和粉丝的见面会，和媒体公司的业务洽淡等。这里的经纪人是明星的朋友，而粉丝和媒体公司是陌生人，所以适合使用迪米特法则。</p>
+<p>类图如下：</p>
+<img src="../imgs/blog25/%E8%BF%AA%E7%B1%B3%E7%89%B9%E6%B3%95%E5%88%99.png" alt="image-20191229173554296" style="zoom:80%;" />
+
+<p>代码如下：</p>
+<p><strong>明星类（Star）</strong></p>
+<pre><code class="java">public class Star &#123;
+    private String name;
+
+    public Star(String name) &#123;
+        this.name=name;
+    &#125;
+
+    public String getName() &#123;
+        return name;
+    &#125;
+&#125;
+</code></pre>
+<p><strong>粉丝类（Fans）</strong></p>
+<pre><code class="java">public class Fans &#123;
+    private String name;
+
+    public Fans(String name) &#123;
+        this.name=name;
+    &#125;
+
+    public String getName() &#123;
+        return name;
+    &#125;
+&#125;
+</code></pre>
+<p><strong>媒体公司类（Company）</strong></p>
+<pre><code class="java">public class Company &#123;
+    private String name;
+
+    public Company(String name) &#123;
+        this.name=name;
+    &#125;
+
+    public String getName() &#123;
+        return name;
+    &#125;
+&#125;
+</code></pre>
+<p><strong>经纪人类（Agent）</strong></p>
+<pre><code class="java">public class Agent &#123;
+    private Star star;
+    private Fans fans;
+    private Company company;
+
+    public void setStar(Star star) &#123;
+        this.star = star;
+    &#125;
+
+    public void setFans(Fans fans) &#123;
+        this.fans = fans;
+    &#125;
+
+    public void setCompany(Company company) &#123;
+        this.company = company;
+    &#125;
+
+    public void meeting() &#123;
+        System.out.println(fans.getName() + &quot;与明星&quot; + star.getName() + &quot;见面了。&quot;);
+    &#125;
+
+    public void business() &#123;
+        System.out.println(company.getName() + &quot;与明星&quot; + star.getName() + &quot;洽淡业务。&quot;);
+    &#125;
+&#125;
+</code></pre>
+<h2 id="合成复用原则"><a href="#合成复用原则" class="headerlink" title="合成复用原则"></a>合成复用原则</h2><p>合成复用原则是指：尽量先使用组合或者聚合等关联关系来实现，其次才考虑使用继承关系来实现。</p>
+<p>通常类的复用分为继承复用和合成复用两种。</p>
+<p>继承复用虽然有简单和易实现的优点，但它也存在以下缺点：</p>
+<ol>
+<li>继承复用破坏了类的封装性。因为继承会将父类的实现细节暴露给子类，父类对子类是透明的，所以这种复用又称为“白箱”复用。</li>
+<li>子类与父类的耦合度高。父类的实现的任何改变都会导致子类的实现发生变化，这不利于类的扩展与维护。</li>
+<li>它限制了复用的灵活性。从父类继承而来的实现是静态的，在编译时已经定义，所以在运行时不可能发生变化。</li>
+</ol>
+<p>采用组合或聚合复用时，可以将已有对象纳入新对象中，使之成为新对象的一部分，新对象可以调用已有对象的功能，它有以下优点：</p>
+<ol>
+<li>它维持了类的封装性。因为成分对象的内部细节是新对象看不见的，所以这种复用又称为“黑箱”复用。</li>
+<li>对象间的耦合度低。可以在类的成员位置声明抽象。</li>
+<li>复用的灵活性高。这种复用可以在运行时动态进行，新对象可以动态地引用与成分对象类型相同的对象。</li>
+</ol>
+<p>下面看一个例子来理解合成复用原则</p>
+<p>【例】汽车分类管理程序</p>
+<p>汽车按“动力源”划分可分为汽油汽车、电动汽车等；按“颜色”划分可分为白色汽车、黑色汽车和红色汽车等。如果同时考虑这两种分类，其组合就很多。类图如下： </p>
+<img src="../imgs/blog25/%E5%90%88%E6%88%90%E5%A4%8D%E7%94%A8%E5%8E%9F%E5%88%99.png" alt="image-20191229173554296" style="zoom:80%;" />
+
+<p>从上面类图我们可以看到使用继承复用产生了很多子类，如果现在又有新的动力源或者新的颜色的话，就需要再定义新的类。我们试着将继承复用改为聚合复用看一下。</p>
+<img src="../imgs/blog25/%E5%90%88%E6%88%90%E5%A4%8D%E7%94%A8%E5%8E%9F%E5%88%991.png" alt="image-20191229173554296" style="zoom:80%;" />
+
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="http://example.com">Mercury</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="http://example.com/2023/06/25/blog25/">http://example.com/2023/06/25/blog25/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="http://example.com" target="_blank">Mercury个人博客</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/">设计模式</a></div><div class="post_share"><div class="social-share" data-image="/img/avatar.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="next-post pull-full"><a href="/2023/06/25/blog24/" title="类及类关系的表示方法"><div class="cover" style="background: var(--default-bg-color)"></div><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">类及类关系的表示方法</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2023/06/25/blog24/" title="类及类关系的表示方法"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2023-06-25</div><div class="title">类及类关系的表示方法</div></div></a></div></div></div><hr/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="lv-container" data-id="city" data-uid="MTAyMC81ODUzMS8zNDk5NA=="></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Mercury</div><div class="author-info__description">我不知将去何方，但我已在路上</div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">25</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">10</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Mercury4915"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">java学习日记，不定时更新</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link"><span class="toc-number">1.</span> <span class="toc-text"></span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%BC%80%E9%97%AD%E5%8E%9F%E5%88%99"><span class="toc-number">1.1.</span> <span class="toc-text">开闭原则</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%87%8C%E6%B0%8F%E4%BB%A3%E6%8D%A2%E5%8E%9F%E5%88%99"><span class="toc-number">1.2.</span> <span class="toc-text">里氏代换原则</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BE%9D%E8%B5%96%E5%80%92%E8%BD%AC%E5%8E%9F%E5%88%99"><span class="toc-number">1.3.</span> <span class="toc-text">依赖倒转原则</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8E%A5%E5%8F%A3%E9%9A%94%E7%A6%BB%E5%8E%9F%E5%88%99"><span class="toc-number">1.4.</span> <span class="toc-text">接口隔离原则</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%BF%AA%E7%B1%B3%E7%89%B9%E6%B3%95%E5%88%99"><span class="toc-number">1.5.</span> <span class="toc-text">迪米特法则</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%90%88%E6%88%90%E5%A4%8D%E7%94%A8%E5%8E%9F%E5%88%99"><span class="toc-number">1.6.</span> <span class="toc-text">合成复用原则</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/06/25/blog25/" title="软件设计原则">软件设计原则</a><time datetime="2023-06-25T13:18:39.000Z" title="发表于 2023-06-25 21:18:39">2023-06-25</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/06/25/blog24/" title="类及类关系的表示方法">类及类关系的表示方法</a><time datetime="2023-06-25T13:17:01.000Z" title="发表于 2023-06-25 21:17:01">2023-06-25</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/06/24/blog23/" title="Paxos协议和Raft协议">Paxos协议和Raft协议</a><time datetime="2023-06-24T03:35:51.000Z" title="发表于 2023-06-24 11:35:51">2023-06-24</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/06/21/blog22/" title="分布式事务">分布式事务</a><time datetime="2023-06-21T01:38:58.000Z" title="发表于 2023-06-21 09:38:58">2023-06-21</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/06/21/blog21/" title="分布式ID">分布式ID</a><time datetime="2023-06-21T01:16:39.000Z" title="发表于 2023-06-21 09:16:39">2023-06-21</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2023 By Mercury</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="直达评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"><script>function loadLivere () {
+  if (typeof LivereTower === 'object') {
+    window.LivereTower.init()
+  }
+  else {
+    (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+        if (typeof LivereTower === 'function') { return; }
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+        e.parentNode.insertBefore(j, e);
+    })(document, 'script');
+  }
+}
+
+if ('Livere' === 'Livere' || !true) {
+  if (true) btf.loadComment(document.getElementById('lv-container'), loadLivere)
+  else loadLivere()
+}
+else {
+  function loadOtherComment () {
+    loadLivere()
+  }
+}</script></div><script defer="defer" id="fluttering_ribbon" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/canvas-fluttering-ribbon.min.js"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="is-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据库加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div class="no-result" id="local-search-results"></div><div id="local-search-stats-wrap"></div></div></div><div id="search-mask"></div><script src="/js/search/local-search.js"></script></div></div></body></html>
