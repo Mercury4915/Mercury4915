@@ -1,0 +1,257 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Ribbon、Gateway、Nginx | Mercury个人博客</title><meta name="author" content="Mercury"><meta name="copyright" content="Mercury"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Ribbon、Gateway、Nginx区别Ribbon​	Ribbon 是一个用于客户端负载均衡的开源项目，最初由 Netflix 开发并开源。它主要用于在分布式系统中选择合适的服务实例并进行负载均衡。 ​	在微服务架构中，服务通常以多个实例运行，这些实例可能分布在不同的主机或容器中。Ribbon 可以与服务注册中心（如 Eureka、Consul 等）集成，通过查询注册中心获取可用的服务实例列">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Ribbon、Gateway、Nginx">
+<meta property="og:url" content="http://example.com/2023/07/03/blog8/index.html">
+<meta property="og:site_name" content="Mercury个人博客">
+<meta property="og:description" content="Ribbon、Gateway、Nginx区别Ribbon​	Ribbon 是一个用于客户端负载均衡的开源项目，最初由 Netflix 开发并开源。它主要用于在分布式系统中选择合适的服务实例并进行负载均衡。 ​	在微服务架构中，服务通常以多个实例运行，这些实例可能分布在不同的主机或容器中。Ribbon 可以与服务注册中心（如 Eureka、Consul 等）集成，通过查询注册中心获取可用的服务实例列">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/img/avatar.jpg">
+<meta property="article:published_time" content="2023-07-03T10:58:52.000Z">
+<meta property="article:modified_time" content="2023-09-14T13:56:57.630Z">
+<meta property="article:author" content="Mercury">
+<meta property="article:tag" content="SpringCloud">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/img/avatar.jpg"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://example.com/2023/07/03/blog8/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"languages":{"hits_empty":"找不到您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: undefined,
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Ribbon、Gateway、Nginx',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2023-09-14 21:56:57'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+    win.getCSS = (url,id = false) => new Promise((resolve, reject) => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = url
+      if (id) link.id = id
+      link.onerror = reject
+      link.onload = link.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        link.onload = link.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(link)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><meta name="generator" content="Hexo 6.3.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="/img/avatar.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">32</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">12</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-graduation-cap"></i><span> 博文</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/categories/"><i class="fa-fw fa fa-archive"></i><span> 分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fa fa-folder-open"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/comment/"><i class="fa-fw fa fa-paper-plane"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于作者</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('/img/default_top_img.jpg')"><nav id="nav"><span id="blog-info"><a href="/" title="Mercury个人博客"><span class="site-name">Mercury个人博客</span></a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search" href="javascript:void(0);"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-graduation-cap"></i><span> 博文</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/categories/"><i class="fa-fw fa fa-archive"></i><span> 分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fa fa-folder-open"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/comment/"><i class="fa-fw fa fa-paper-plane"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于作者</span></a></div></div><div id="toggle-menu"><a class="site-page" href="javascript:void(0);"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">Ribbon、Gateway、Nginx</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2023-07-03T10:58:52.000Z" title="发表于 2023-07-03 18:58:52">2023-07-03</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2023-09-14T13:56:57.630Z" title="更新于 2023-09-14 21:56:57">2023-09-14</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="Ribbon、Gateway、Nginx"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h1 id="Ribbon、Gateway、Nginx区别"><a href="#Ribbon、Gateway、Nginx区别" class="headerlink" title="Ribbon、Gateway、Nginx区别"></a>Ribbon、Gateway、Nginx区别</h1><h2 id="Ribbon"><a href="#Ribbon" class="headerlink" title="Ribbon"></a>Ribbon</h2><p>​	Ribbon 是一个用于客户端负载均衡的开源项目，最初由 Netflix 开发并开源。它主要用于在分布式系统中选择合适的服务实例并进行负载均衡。</p>
+<p>​	在微服务架构中，服务通常以多个实例运行，这些实例可能分布在不同的主机或容器中。Ribbon 可以与服务注册中心（如 Eureka、Consul 等）集成，通过查询注册中心获取可用的服务实例列表。</p>
+<p>​	Ribbon 在客户端应用内部工作，作为一个负载均衡组件，它会根据一定的负载均衡策略选择一个合适的服务实例来发送请求。这些负载均衡策略包括轮询、随机、加权随机、最少连接等。选择的服务实例将接收客户端的请求，并将响应返回给客户端。</p>
+<p>​	Ribbon 还提供了一些其他功能，如超时设置、重试机制、服务实例健康检查等。它可以根据服务实例的健康状态和负载情况动态地选择合适的实例，以实现负载均衡和故障恢复。</p>
+<p>​	Ribbon 的优点是简单轻量、易于集成和扩展。它与多种服务注册中心和开发框架兼容，适用于各种微服务架构中的负载均衡需求。</p>
+<h2 id="Gateway"><a href="#Gateway" class="headerlink" title="Gateway"></a>Gateway</h2><p>​	Gateway是一种在分布式系统中充当入口点的中间层组件。它位于客户端和后端服务之间，负责接收来自客户端的请求，并将请求转发到适当的后端服务进行处理。</p>
+<p>​	网关的主要功能包括：</p>
+<ol>
+<li><p>请求路由：网关根据预定义的路由规则将请求路由到相应的后端服务。路由规则可以基于请求的路径、请求方法、请求头等进行匹配和转发。</p>
+</li>
+<li><p>协议转换：网关可以根据需要将请求和响应从一种协议转换为另一种协议。例如，可以将传入的请求从 HTTP 转换为 gRPC，或将响应从 gRPC 转换为 JSON。</p>
+</li>
+<li><p>负载均衡：网关可以实现负载均衡策略，将请求均匀地分发到多个后端服务实例。这可以通过集成服务发现组件（如 Eureka、Consul 等）来实现，并根据服务实例的健康状态和负载情况进行动态选择。</p>
+</li>
+<li><p>安全认证与授权：网关可以提供身份验证和授权功能，保护后端服务免受未经授权的访问。它可以验证请求的身份信息（如令牌、证书等），并根据配置的权限规则控制访问权限。</p>
+</li>
+<li><p>监控与日志记录：网关可以记录请求和响应的日志，并提供监控指标和统计信息，用于系统性能分析、故障排查和流量监控。</p>
+</li>
+<li><p>缓存：网关可以缓存经常请求的响应，以提高系统的响应速度和吞吐量。这可以减少后端服务的负载，并提供更快的响应时间。</p>
+</li>
+</ol>
+<p>​	网关在微服务架构中扮演着重要的角色，它提供了一种集中管理和处理请求的方式，简化了客户端和后端服务之间的通信和协调。常见的网关实现包括 Spring Cloud Gateway、Netflix Zuul、Kong 等。这些网关可以与其他微服务组件集成，并提供丰富的功能来支持复杂的系统架构和需求。</p>
+<h2 id="Nginx"><a href="#Nginx" class="headerlink" title="Nginx"></a>Nginx</h2><p>​	Nginx是一个高性能的开源反向代理服务器、负载均衡器和Web服务器。它具有轻量级、高效率和可扩展性的特点，被广泛应用于构建高性能的Web应用和服务。</p>
+<ol>
+<li><p>反向代理：<br>Nginx作为反向代理服务器，接收客户端请求，并将请求转发到后端服务器。它可以隐藏后端服务器的细节，并提供负载均衡功能，将请求分发到多个后端服务器上，从而提高系统的可用性和性能。</p>
+</li>
+<li><p>负载均衡：<br>Nginx支持多种负载均衡算法，如轮询、IP哈希、最少连接等。它可以根据配置的负载均衡策略将请求均匀地分发到多个后端服务器，以实现负载均衡和故障恢复。</p>
+</li>
+<li><p>静态文件服务：<br>Nginx可以快速高效地提供静态文件的服务，如HTML、CSS、JavaScript、图像文件等。它通过使用异步非阻塞的方式处理请求，以及内置的缓存机制，提供了出色的性能和可扩展性。</p>
+</li>
+<li><p>SSL&#x2F;TLS加密：<br>Nginx支持SSL&#x2F;TLS协议，可以用于配置安全的HTTPS连接，为网站和应用程序提供加密和安全传输的功能。它可以作为SSL终端点，处理与客户端之间的加密通信。</p>
+</li>
+<li><p>动态请求转发：<br>Nginx还可以根据请求的内容或规则将请求转发到不同的后端服务。它支持配置灵活的反向代理规则，根据URL路径、请求头、参数等条件进行请求转发和路由。</p>
+</li>
+<li><p>高性能和可扩展性：<br>Nginx采用事件驱动、非阻塞的架构设计，可以处理大量并发连接和高流量的请求，具有出色的性能表现。它还支持多进程、多线程的部署模式，可以根据需求进行水平扩展。</p>
+</li>
+<li><p>日志记录和监控：<br>Nginx提供详细的访问日志记录，记录请求和响应的信息，便于故障排查和性能优化。它还支持实时监控和统计指标的收集，可以与其他监控工具集成，实现对系统的监控和管理。</p>
+</li>
+</ol>
+<p>​	Nginx是一个强大而灵活的服务器软件，广泛应用于Web应用、反向代理、负载均衡、缓存、媒体流服务等多个领域。</p>
+<h2 id="三者区别"><a href="#三者区别" class="headerlink" title="三者区别"></a>三者区别</h2><ol>
+<li>功能定位：<ul>
+<li>Gateway: 网关是一个完整的请求路由和代理解决方案，通常用于构建微服务架构中的入口点，负责请求的接收、路由、转发、安全性、监控等。</li>
+<li>Ribbon: Ribbon是一个客户端负载均衡组件，用于在客户端应用内部选择合适的服务实例，主要负责服务实例的选择和负载均衡算法的应用。</li>
+<li>Nginx: Nginx是一个高性能的反向代理服务器，可以作为负载均衡器，接收客户端请求并将其转发到后端服务器，主要负责请求转发和负载均衡算法的实现。</li>
+</ul>
+</li>
+<li>部署位置：<ul>
+<li>Gateway: 网关通常位于整个架构的边界，作为对外的入口点，接收外部请求并路由到内部的服务实例。</li>
+<li>Ribbon: Ribbon作为客户端负载均衡组件，嵌入在客户端应用中，与应用共存于同一个进程内。</li>
+<li>Nginx: Nginx作为反向代理服务器，通常部署在服务器端，位于客户端与后端服务之间，接收客户端请求并将其转发到后端服务器。</li>
+</ul>
+</li>
+<li>负载均衡算法：<ul>
+<li>Gateway: 网关可以结合多种负载均衡算法，如轮询、权重、哈希等，根据不同的路由规则和服务实例情况进行选择。</li>
+<li>Ribbon: Ribbon提供了丰富的负载均衡算法选择，如轮询、随机、加权随机、最少连接等，可以根据需要选择合适的算法。</li>
+<li>Nginx: Nginx也支持多种负载均衡算法，如轮询、IP哈希、最少连接等，可以根据需求进行配置。</li>
+</ul>
+</li>
+<li>扩展性和灵活性：<ul>
+<li>Gateway: 网关通常提供了更多的功能，如认证、授权、监控等，以及自定义路由规则的灵活性，可以根据具体需求进行定制开发。</li>
+<li>Ribbon: Ribbon作为客户端负载均衡组件，对于客户端应用来说，具有更高的扩展性和灵活性，可以根据业务需求进行自定义的负载均衡逻辑实现。</li>
+<li>Nginx: Nginx作为反向代理服务器，可以灵活配置代理规则和负载均衡算法，同时也支持自定义的扩展模块。</li>
+</ul>
+</li>
+</ol>
+<p>​	</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>​	在项目中同时使用到这三者的情况时候，可以这么理解，用户请求进来是先过Nginx网关，这里的Nginx就相当于一个流量网关，是属于用户访问的一个入口。 然后在进入到gateway网关中，这里的getway网关属于一个业务网关，通过对应的属性配置将请求传递到每一个业务微服务中去。而Ribbon负责微服务之间调用时的负载均衡。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="http://example.com">Mercury</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="http://example.com/2023/07/03/blog8/">http://example.com/2023/07/03/blog8/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="http://example.com" target="_blank">Mercury个人博客</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/SpringCloud/">SpringCloud</a></div><div class="post_share"><div class="social-share" data-image="/img/avatar.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2023/07/03/blog9/" title="Hystrix简介"><div class="cover" style="background: var(--default-bg-color)"></div><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">Hystrix简介</div></div></a></div><div class="next-post pull-right"><a href="/2023/07/02/blog7/" title="统计范围内的元音字符串数"><div class="cover" style="background: var(--default-bg-color)"></div><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">统计范围内的元音字符串数</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2023/07/04/blog10/" title="SpringCloud常用组件对比"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2023-07-04</div><div class="title">SpringCloud常用组件对比</div></div></a></div><div><a href="/2023/07/03/blog9/" title="Hystrix简介"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2023-07-03</div><div class="title">Hystrix简介</div></div></a></div></div></div><hr/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="lv-container" data-id="city" data-uid="MTAyMC81ODUzMS8zNDk5NA=="></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Mercury</div><div class="author-info__description">我不知将去何方，但我已在路上</div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">32</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">12</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Mercury4915"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">java学习日记，不定时更新</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Ribbon%E3%80%81Gateway%E3%80%81Nginx%E5%8C%BA%E5%88%AB"><span class="toc-number">1.</span> <span class="toc-text">Ribbon、Gateway、Nginx区别</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Ribbon"><span class="toc-number">1.1.</span> <span class="toc-text">Ribbon</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Gateway"><span class="toc-number">1.2.</span> <span class="toc-text">Gateway</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Nginx"><span class="toc-number">1.3.</span> <span class="toc-text">Nginx</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E8%80%85%E5%8C%BA%E5%88%AB"><span class="toc-number">1.4.</span> <span class="toc-text">三者区别</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">1.5.</span> <span class="toc-text">总结</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/09/14/blog32/" title="G1垃圾回收流程">G1垃圾回收流程</a><time datetime="2023-09-14T13:01:17.000Z" title="发表于 2023-09-14 21:01:17">2023-09-14</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/09/01/blog31/" title="常见的Server的并发模型">常见的Server的并发模型</a><time datetime="2023-09-01T03:52:17.000Z" title="发表于 2023-09-01 11:52:17">2023-09-01</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/08/16/blog30/" title="Mysql Explain之type详解">Mysql Explain之type详解</a><time datetime="2023-08-16T11:29:46.000Z" title="发表于 2023-08-16 19:29:46">2023-08-16</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/08/16/blog29/" title="Java常见数据结构源码分析">Java常见数据结构源码分析</a><time datetime="2023-08-16T02:14:57.000Z" title="发表于 2023-08-16 10:14:57">2023-08-16</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/08/13/blog28/" title="线段树">线段树</a><time datetime="2023-08-13T01:13:59.000Z" title="发表于 2023-08-13 09:13:59">2023-08-13</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2023 By Mercury</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="直达评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"><script>function loadLivere () {
+  if (typeof LivereTower === 'object') {
+    window.LivereTower.init()
+  }
+  else {
+    (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+        if (typeof LivereTower === 'function') { return; }
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+        e.parentNode.insertBefore(j, e);
+    })(document, 'script');
+  }
+}
+
+if ('Livere' === 'Livere' || !true) {
+  if (true) btf.loadComment(document.getElementById('lv-container'), loadLivere)
+  else loadLivere()
+}
+else {
+  function loadOtherComment () {
+    loadLivere()
+  }
+}</script></div><script defer="defer" id="fluttering_ribbon" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/canvas-fluttering-ribbon.min.js"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="is-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据库加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div class="no-result" id="local-search-results"></div><div id="local-search-stats-wrap"></div></div></div><div id="search-mask"></div><script src="/js/search/local-search.js"></script></div></div></body></html>
