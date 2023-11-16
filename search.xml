@@ -523,6 +523,25 @@
     
     
     <entry>
+      <title>Tomcat类加载机制</title>
+      <link href="/2023/09/16/blog37/"/>
+      <url>/2023/09/16/blog37/</url>
+      
+        <content type="html"><![CDATA[<p>JVM 的类加载机制以及双亲委派模型，双亲委派模型的类加载过程主要分为以下几个步骤：</p><p>（1）初始化 ClassLoader 时需要指定自己的 parent 是谁<br>（2）先检查类是否已经被加载过，如果类已经被加载了，直接返回<br>（3）若没有加载则调用父加载器 parent 的 loadClass() 方法进行加载<br>（4）若父加载器为空则默认使用启动类加载器 bootstrap ClassLoader 进行加载<br>（5）如果父类加载失败，抛出 ClassNotFoundException 异常后，再调用自己的 findClass() 方法进行加载。<br>        前面文章也提到，如果想要破坏这种机制，那么就自定义一个类加载器（继承自 ClassLoader），并重写其中的 loadClass() 方法，使其不进行双亲委派即可。最经典例子就是 Tomcat 容器的类加载机制了，它实现了自己的类加载器 WebApp ClassLoader，并且打破了双亲委派模型，在每个应用在部署后，都会创建一个唯一的类加载器。</p><h2 id="1、Tomcat-的类加载器结构图："><a href="#1、Tomcat-的类加载器结构图：" class="headerlink" title="1、Tomcat 的类加载器结构图："></a>1、Tomcat 的类加载器结构图：</h2><p><img src="/../imgs/blog37/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBA5byg57u06bmP,size_20,color_FFFFFF,t_70,g_se,x_16.png" alt="img"></p><p>（1）Common ClassLoader：加载 common.loader 属性下的 jar，一般是 CATALINA_HOME&#x2F;lib 目录下，主要是 tomcat 使用以及应用通用的一些类</p><p>（2）Catalina ClassLoader：加载 server.loader 属性下的 jar，默认未配置路径，返回其父加载器即 Common ClassLoader，主要是加载服务器内部可⻅类，这些类应⽤程序不能访问；</p><p>（3）Shared Classloader：加载 share.loader 属性下的jar，默认未配置路径，返回其父加载器即 Common ClassLoader，主要是加载应⽤程序共享类，这些类对 Tomcat 自己不可见；</p><p>只有指定了 tomcat&#x2F;conf&#x2F;catalina.properties 配置文件的 server.loader 和 share.loader 项后，才会真正建立 Catalina ClassLoader 和 Shared ClassLoader 的实例，否则在用到这两个类加载器的地方都会用 Common ClassLoader 的实例代替，而默认的配置文件中是没有设置这两个 loader 项的</p><p>（4）WebApp ClassLoader：Tomcat 可以存在多个 WebApp ClassLoader 实例，每个应⽤程序都会有⼀个独⼀⽆⼆的 WebApp ClassLoader，⽤来加载本应⽤程序 &#x2F;WEB-INF&#x2F;classes 和 &#x2F;WEB-INF&#x2F;lib 下的类。</p><h2 id="2、Tomcat-的类加载流程说明："><a href="#2、Tomcat-的类加载流程说明：" class="headerlink" title="2、Tomcat 的类加载流程说明："></a>2、Tomcat 的类加载流程说明：</h2><p>当 Tomcat 使用 WebAppClassLoader 进行类加载时，具体过程如下：</p><p>（1）先在本地 cache 缓存中查找该类是否已经加载过，看看 Tomcat 有没有加载过这个类</p><p>（2）如果 Tomcat 没有加载过这个类，则从系统类加载器的 cache 缓存中查找是否加载过</p><p>（3）如果没有，则使用 ExtClassLoader 类加载器类加载，重点来了，Tomcat 的 WebAppClassLoader 并没有先使用 AppClassLoader 来加载类，而是直接使用了 ExtClassLoader 来加载类。不过 ExtClassLoader 依然遵循双亲委派，它会使用 Bootstrap ClassLoader 来对类进行加载，保证了 Jre 里面的核心类不会被重复加载。</p><p>比如在 Web 中加载一个 Object 类。WebAppClassLoader → ExtClassLoader → Bootstrap ClassLoader，这个加载链，就保证了 Object 不会被重复加载。</p><p>（4）如果没有加载成功，WebAppClassLoader 就会调用自己的 findClass() 方法由自己来对类进行加载，先在 WEB-INF&#x2F;classes 中加载，再从 WEB-INF&#x2F;lib 中加载。</p><p>（5）如果仍然未加载成功，WebAppclassLoader 会委派给 SharedClassLoader，SharedClassLoad 再委派给 CommonClassLoader，CommonClassLoader 委派给 AppClassLoader，直到最终委派给 BootstrapClassLoader，最后再一层一层地在自己目录下对类进行加载。</p><p>（6）都没有加载成功的话，抛出异常。</p><h2 id="3、源码解析："><a href="#3、源码解析：" class="headerlink" title="3、源码解析："></a>3、源码解析：</h2><p>（1）WebAppClassLoader 的 loadClass() 方法源码：</p><p>WebappClassLoader 应用类加载器的 loadClass 在他的父类 WebappClassLoaderBase 中</p><pre><code>public Class&lt;?&gt; loadClass(String name, boolean resolve) throws ClassNotFoundException &#123;    synchronized (getClassLoadingLock(name)) &#123;        Class&lt;?&gt; clazz = null;        //1. 先在本地cache查找该类是否已经加载过        clazz = findLoadedClass0(name);        if (clazz != null) &#123;            if (resolve)                resolveClass(clazz);            return clazz;        &#125;        //2. 从系统类加载器的cache中查找是否加载过        clazz = findLoadedClass(name);        if (clazz != null) &#123;            if (resolve)                resolveClass(clazz);            return clazz;        &#125;        // 3. 尝试用ExtClassLoader类加载器类加载(ExtClassLoader 遵守双亲委派，ExtClassLoader 会使用 Bootstrap ClassLoader 对类进行加载)        ClassLoader javaseLoader = getJavaseClassLoader();        try &#123;            clazz = javaseLoader.loadClass(name);            if (clazz != null) &#123;                if (resolve)                    resolveClass(clazz);                return clazz;            &#125;        &#125; catch (ClassNotFoundException e) &#123;            // Ignore        &#125;        // 4. 尝试在本地目录搜索class并加载        try &#123;            clazz = findClass(name);            if (clazz != null) &#123;                if (resolve)                    resolveClass(clazz);                return clazz;            &#125;        &#125; catch (ClassNotFoundException e) &#123;            // Ignore        &#125;        // 5. 尝试用系统类加载器(AppClassLoader)来加载        try &#123;            clazz = Class.forName(name, false, parent);            if (clazz != null) &#123;                if (resolve)                    resolveClass(clazz);                return clazz;            &#125;        &#125; catch (ClassNotFoundException e) &#123;            // Ignore        &#125;     &#125;    //6. 上述过程都加载失败，抛出异常    throw new ClassNotFoundException(name);&#125;</code></pre><p>（2）WebAppClassLoader 的 findClass() 方法源码：</p><pre><code>public Class&lt;?&gt; findClass(String name) throws ClassNotFoundException &#123;    // Ask our superclass to locate this class, if possible    // (throws ClassNotFoundException if it is not found)    Class&lt;?&gt; clazz = null;​// 先在自己的 Web 应用目录下查找 class​clazz = findClassInternal(name);​// 找不到 在交由父类来处理​if ((clazz == null) &amp;&amp; hasExternalRepositories) &#123;  ​    clazz = super.findClass(name);​&#125;​if (clazz == null) &#123;​     throw new ClassNotFoundException(name);​&#125;​return clazz;&#125;</code></pre><h2 id="4、为什么tomcat要实现自己的类加载机制："><a href="#4、为什么tomcat要实现自己的类加载机制：" class="headerlink" title="4、为什么tomcat要实现自己的类加载机制："></a>4、为什么tomcat要实现自己的类加载机制：</h2><p>​    WebAppClassLoader 加载类的时候，故意打破了JVM 双亲委派机制，绕开了 AppClassLoader，直接先使用 ExtClassLoader 来加载类。最主要原因是保证部署在同一个 Web 容器上的不同 Web 应用程序所使用的类库可以实现相互隔离，避免不同项目的相互影响。当然还有其他原因，如：</p><p>（1）保证 Web 容器自身的安全不受部署的 Web 应用程序影响，所以 Tomcat 使用的类库要与部署的应用的类库相互独立</p><p>（2）保证部分基础类不会被同时加载，有些类库 Tomcat 与部署的应用可以共享，比如说 servlet-api</p><p>（3）保证部署在同一个 Web 容器的应用之间的类库可以共享，这听起来好像主要原因相互矛盾，但其实这很合理，类被类加载器加载到虚拟机后，会存放在方法区的永久代中，如果类库不能共享，虚拟机的方法区就会很容易出现过度膨胀的风险。比如这时候如果有大量的应用使用 spring 来管理，如果 spring 类库不能共享，那每个应用的 spring 类库都会被加载一次，将会是很大的资源浪费。</p><p>小结：Tomcat 实际上只有 WebAppClassLoader 加载器中打破了双亲委派，其他类加载器还是遵循双亲委派的。 这样做最主要原因是保证同个 Web 容器中的不同 Web 应用程序所使用的类库相互独立，避免相互影响</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 学习笔记 </category>
+          
+      </categories>
+      
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>常见的Server的并发模型</title>
       <link href="/2023/09/01/blog31/"/>
       <url>/2023/09/01/blog31/</url>
@@ -615,6 +634,31 @@
         <tags>
             
             <tag> 设计模式 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>TLAB简介</title>
+      <link href="/2023/08/16/blog38/"/>
+      <url>/2023/08/16/blog38/</url>
+      
+        <content type="html"><![CDATA[<h1 id="一、Java对象的内存分配过程如何保证线程安全的？"><a href="#一、Java对象的内存分配过程如何保证线程安全的？" class="headerlink" title="一、Java对象的内存分配过程如何保证线程安全的？"></a>一、Java对象的内存分配过程如何保证线程安全的？</h1><p>因为堆是线程之间共享的，如果在并发场景中，两个线程先后把对象的引用指向了同一个内存区域，怎么办？</p><p>为了解决这个并发问题，对象的内存分配过程就必须进行同步控制，但是，无论使用哪种方案（有可能是CAS），都会影响内存的分配效率。然而对于 Java 来说对象的分配是高频操作。</p><p>由此 HotSpot 虚拟机采用了这个方案：每个线程在 Java 堆中预先分配一小块内存，然后在给对象分配内存的时候，直接在自己的这块”私有“内存中进行分配，当这部分用完之后，再分配新的”私有“内存。</p><p>这种方案被称之为 TLAB 分配。这部分 buffer 是从堆中划分出来的，但是本地线程独享的。</p><h1 id="二、什么是-TLAB"><a href="#二、什么是-TLAB" class="headerlink" title="二、什么是 TLAB"></a>二、什么是 TLAB</h1><p>TLAB 是虚拟机在内存的 eden 区划分出来的一块专用空间，是线程专属的。在启用 TLAB 的情况下，当线程被创建时，虚拟机会为每个线程分配一块 TLAB 空间，只给当前线程使用，这样每个线程都单独拥有一个空间，如果需要分配内存，就在自己的空间上分配，这样就不存在竞争的情况，可以大大提高分配效率。</p><p>所以说，因为有了 TLAB 技术，堆内存并不是完完全全的线程共享，其中 eden 区中还是有一部分空间是分配给线程独享的。</p><p>注意：这里 TLAB 的线程独享是针对于分配动作，至于读取、垃圾回收等工作是线程共享的，而且在使用上也没什么区别。</p><p>也就是说，虽然每个线程在初始化时都会去堆内存中申请一块 TLAB，并不是说这个 TLAB 区域的内存其他线程就完全无法访问了，其他线程的读取还是可以的，只不过无法在这个区域中分配内存而已。</p><p>并且，在 TLAB 分配之后，并不影响对象的移动和回收，也就是说，虽然对象刚开始可能通过 TLAB 分配内存，存放在 Eden 区，但是还是会被垃圾回收或者被移到 S 区和老年代等。</p><p>还有一点需要注意的是，我们说 TLAB 是在 eden 区分配的，因为 eden 区域本身就不太大，而且 TLAB 空间的内存也非常小，默认情况下仅占有整个 eden 空间的 1%。所以，必然存在一些大对象是无法在 TLAB 直接分配。遇到 TLAB 中无法分配的大对象，对象还是可能在 eden 区或者老年代等进行分配的，但是这种分配就需要进行同步控制，这也是为什么我们经常说：小的对象比大的对象分配起来更加高效。</p><p><img src="/../imgs/blog38/format,png.png" alt="img"></p><h1 id="三、TLAB-带来的问题"><a href="#三、TLAB-带来的问题" class="headerlink" title="三、TLAB 带来的问题"></a>三、TLAB 带来的问题</h1><p>主要问题就是因为 TLAB 空间太小导致的。</p><p>比如一个线程的 TLAB 空间有 100KB，其中已经使用了 80KB，当需要再分配一个 30KB 的对象时，就无法直接在 TLAB 中分配，遇到这种情况时有两种处理方案：</p><ol><li>直接在堆内存中对该对象进行内存分配。</li><li>废弃当前的 TLAB，重新申请 TLAB 空间再次进行内存分配。</li></ol><p>方案 1 的话，如果 TLAB 只剩下 1KB 的空间了，那么后续的大多数对象都需要在堆内存中分配，方案 2 的话，有可能会有频繁的废弃 TLAB 申请 TLAB 的情况。TLAB 内存自己从堆中进行分配时也是需要并发控制的，而频繁的分配 TLAB 就失去了 TLAB 的意义了。</p><p>为了解决这个问题，虚拟机定义了一个 refill_waste 的值，这个值可以翻译为”最大浪费空间“。</p><p>当 TLAB 剩余空间不足时，</p><ol><li>若请求分配的内存大于 refill_waste，会选择在堆内存中分配。</li><li>若请求分配的内存小于 refill_waste，会选择废弃当前的 TLAB，重新创建 TLAB 进行对象内存分配。</li></ol><p>前面的例子中，TLAB总空间100KB，使用了80KB，剩余20KB，如果设置的refill_waste的值为25KB，那么如果新对象的内存大于25KB，则直接堆内存分配，如果小于25KB，则会废弃掉之前的那个TLAB，重新分配一个TLAB空间，给新对象分配内存。</p><p><img src="/../imgs/blog38/format,png-17001393556982.png" alt="img"></p><h1 id="四、相关参数"><a href="#四、相关参数" class="headerlink" title="四、相关参数"></a>四、相关参数</h1><p>主要有三个参数：</p><ol><li>-XX:+&#x2F;-UseTLAB 用来控制是否开启 TLAB。</li><li>-XX:TLABWasteTargetPercent 设置 TLAB 空间占用 Eden 区的百分比大小，默认是 1%。</li><li>-XX:-ResizeTLAB 禁用自动调整 TLAB 的大小。默认情况下，TLAB的空间会在运行时不断调整，使系统达到最佳的运行状态。</li><li>-XX:TLABSize 手动指定 TLAB 的大小。</li><li>-XX:TLABRefillWasteFraction 调整 refill_waste 参数，默认是64，表示使用 1&#x2F;64 的 TALB 空间作为 refill_waste 的值。</li><li>-XX:+PrintTLAB 跟踪 TLAB 的使用情况。</li></ol>]]></content>
+      
+      
+      <categories>
+          
+          <category> 学习笔记 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> JVM </tag>
             
         </tags>
       
