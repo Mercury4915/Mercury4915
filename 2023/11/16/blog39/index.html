@@ -1,0 +1,448 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>四种常见限流算法原理及实现 | Mercury个人博客</title><meta name="author" content="Mercury"><meta name="copyright" content="Mercury"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="在分布式系统中，高并发场景下，为了防止系统因突然的流量激增而导致的崩溃，同时保证服务的高可用性和稳定性，限流是最常用的手段。 常见的四种限流算法，分别是：固定窗口算法、滑动窗口算法、漏桶算法、令牌桶算法。 1. 固定窗口算法1.1 实现原理固定窗口限流算法，也叫计数器限流算法，是最简单的一种限流算法。 实现原理是： 在一个固定长度的时间窗口内限制请求数量，每来一个请求，请求次数加一，如果请求数量超">
+<meta property="og:type" content="article">
+<meta property="og:title" content="四种常见限流算法原理及实现">
+<meta property="og:url" content="http://example.com/2023/11/16/blog39/index.html">
+<meta property="og:site_name" content="Mercury个人博客">
+<meta property="og:description" content="在分布式系统中，高并发场景下，为了防止系统因突然的流量激增而导致的崩溃，同时保证服务的高可用性和稳定性，限流是最常用的手段。 常见的四种限流算法，分别是：固定窗口算法、滑动窗口算法、漏桶算法、令牌桶算法。 1. 固定窗口算法1.1 实现原理固定窗口限流算法，也叫计数器限流算法，是最简单的一种限流算法。 实现原理是： 在一个固定长度的时间窗口内限制请求数量，每来一个请求，请求次数加一，如果请求数量超">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/img/avatar.jpg">
+<meta property="article:published_time" content="2023-11-16T13:16:48.000Z">
+<meta property="article:modified_time" content="2023-11-16T13:26:43.416Z">
+<meta property="article:author" content="Mercury">
+<meta property="article:tag" content="分布式">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/img/avatar.jpg"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://example.com/2023/11/16/blog39/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"languages":{"hits_empty":"找不到您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: undefined,
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '四种常见限流算法原理及实现',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2023-11-16 21:26:43'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+    win.getCSS = (url,id = false) => new Promise((resolve, reject) => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = url
+      if (id) link.id = id
+      link.onerror = reject
+      link.onload = link.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        link.onload = link.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(link)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><link rel="stylesheet" href="/themes/butterfly/source/css/mouse.css?1"><meta name="generator" content="Hexo 6.3.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="/img/avatar.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">39</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">13</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-graduation-cap"></i><span> 博文</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/categories/"><i class="fa-fw fa fa-archive"></i><span> 分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fa fa-folder-open"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/comment/"><i class="fa-fw fa fa-paper-plane"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于作者</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('/img/default_top_img.jpg')"><nav id="nav"><span id="blog-info"><a href="/" title="Mercury个人博客"><span class="site-name">Mercury个人博客</span></a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search" href="javascript:void(0);"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-graduation-cap"></i><span> 博文</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/categories/"><i class="fa-fw fa fa-archive"></i><span> 分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fa fa-folder-open"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/comment/"><i class="fa-fw fa fa-paper-plane"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于作者</span></a></div></div><div id="toggle-menu"><a class="site-page" href="javascript:void(0);"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">四种常见限流算法原理及实现</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2023-11-16T13:16:48.000Z" title="发表于 2023-11-16 21:16:48">2023-11-16</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2023-11-16T13:26:43.416Z" title="更新于 2023-11-16 21:26:43">2023-11-16</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="四种常见限流算法原理及实现"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><p>在分布式系统中，高并发场景下，为了防止系统因突然的流量激增而导致的崩溃，同时保证服务的高可用性和稳定性，限流是最常用的手段。</p>
+<p>常见的四种限流算法，分别是：<strong>固定窗口算法</strong>、<strong>滑动窗口算法</strong>、<strong>漏桶算法</strong>、<strong>令牌桶算法</strong>。</p>
+<h1 id="1-固定窗口算法"><a href="#1-固定窗口算法" class="headerlink" title="1. 固定窗口算法"></a><strong>1. 固定窗口算法</strong></h1><h2 id="1-1-实现原理"><a href="#1-1-实现原理" class="headerlink" title="1.1 实现原理"></a><strong>1.1 实现原理</strong></h2><p>固定窗口限流算法，也叫计数器限流算法，是最简单的一种限流算法。</p>
+<p><strong>实现原理是：</strong> 在一个固定长度的时间窗口内限制请求数量，每来一个请求，请求次数加一，如果请求数量超过最大限制，就拒绝该请求。</p>
+<p><img src="/../imgs/blog39/1.jpg"></p>
+<p>下面使用Java伪代码实现一下固定窗口限流算法，注意以下算法没有考虑并发情况，在并发环境下，可以使用Synchronized、Reentrantlock或者AtomicLong等并发工具来保证数据安全性。</p>
+<h2 id="1-2-代码实现"><a href="#1-2-代码实现" class="headerlink" title="1.2 代码实现"></a><strong>1.2 代码实现</strong></h2><pre><code class="java">public class FixWindowLimiter &#123;
+
+    /**
+     * 每个窗口的最大请求数量
+     */
+    public static long threshold = 10;
+    /**
+     * 窗口大小，1000ms
+     */
+    public static long windowUnit = 1000;
+    /**
+     * 窗口内的当前请求数量
+     */
+    public static long count = 0;
+    /**
+     * 窗口的开始时间
+     */
+    public static long lastTime = 0;
+
+    /**
+     * 限流方法，返回true表示通过
+     */
+    public boolean limit() &#123;
+        // 获取系统当前时间
+        long currentTime = System.currentTimeMillis();
+        // 判断是否在当前时间窗口内，如果不在就开启一个新的时间窗口
+        if (currentTime - lastTime &gt; windowUnit) &#123;
+            // 计数器清零
+            count = 0;
+            // 开启新的时间窗口
+            lastTime = currentTime;
+        &#125;
+        // 判断是否超过最大请求量
+        if (count &lt; threshold) &#123;
+            count++;
+            return true;
+        &#125;
+        return false;
+    &#125;
+
+&#125;
+</code></pre>
+<h2 id="1-3-优缺点"><a href="#1-3-优缺点" class="headerlink" title="1.3 优缺点"></a><strong>1.3 优缺点</strong></h2><p><strong>优点：</strong> 实现简单，容易理解。</p>
+<p><strong>缺点：</strong></p>
+<ol>
+<li>限流不够平滑。例如：限流是每秒3个，在第一毫秒发送了3个请求，达到限流，窗口剩余时间的请求都将会被拒绝，体验不好。</li>
+<li>无法处理窗口边界问题。因为是在某个时间窗口内进行流量控制，所以可能会出现窗口边界效应，即在时间窗口的边界处可能会有大量的请求被允许通过，从而导致突发流量。</li>
+</ol>
+<p>例如：限流是每秒3个，在第一秒的最后一毫秒发送了3个请求，在第二秒的第一毫秒又发送了3个请求。在这两毫米内处理了6个请求，但是并没有触发限流。如果出现突发流量，可能会压垮服务器。</p>
+<p>!<img src="/../imgs/blog39/2.jpg"></p>
+<h1 id="2-滑动窗口算法"><a href="#2-滑动窗口算法" class="headerlink" title="2. 滑动窗口算法"></a><strong>2. 滑动窗口算法</strong></h1><h2 id="2-1-实现原理"><a href="#2-1-实现原理" class="headerlink" title="2.1 实现原理"></a><strong>2.1 实现原理</strong></h2><p>滑动窗口算法是对固定窗口算法的一种改进。在滑动窗口算法中，窗口的起止时间是动态的，窗口的大小固定。这种算法能够较好地处理窗口边界问题，但是实现相对复杂，需要记录每个请求的时间戳。</p>
+<p><strong>实现原理是：</strong> 每来一个请求，就向后推一个时间窗口，计算这个窗口内的请求数量。如果请求数量超过限制就拒绝请求，否则就处理请求，并记录请求的时间戳。另外还需要一个任务清理过期的时间戳。</p>
+<p><img src="/../imgs/blog39/5.jpg"></p>
+<h2 id="2-2-代码实现"><a href="#2-2-代码实现" class="headerlink" title="2.2 代码实现"></a><strong>2.2 代码实现</strong></h2><pre><code class="java">public class SlidingWindowLimiter &#123;
+
+    /**
+     * 每个窗口的最大请求数量
+     */
+    public static long threshold = 10;
+    /**
+     * 窗口大小，1000ms
+     */
+    public static long windowUnit = 1000;
+    /**
+     * 请求集合，用来存储窗口内的请求数量
+     */
+    public static List&lt;Long&gt; requestList = new ArrayList&lt;&gt;();
+
+    /**
+     * 限流方法，返回true表示通过
+     */
+    public boolean limit() &#123;
+        // 获取系统当前时间
+        long currentTime = System.currentTimeMillis();
+        // 统计当前窗口内，有效的请求数量
+        int sizeOfValid = this.sizeOfValid(currentTime);
+        // 判断是否超过最大请求数量
+        if (sizeOfValid &lt; threshold) &#123;
+            // 把当前请求添加到请求集合里
+            requestList.add(currentTime);
+            return true;
+        &#125;
+        return false;
+    &#125;
+
+    /**
+     * 统计当前窗口内，有效的请求数量
+     */
+    private int sizeOfValid(long currentTime) &#123;
+        int sizeOfValid = 0;
+        for (Long requestTime : requestList) &#123;
+            // 判断是否在当前时间窗口内
+            if (currentTime - requestTime &lt;= windowUnit) &#123;
+                sizeOfValid++;
+            &#125;
+        &#125;
+        return sizeOfValid;
+    &#125;
+
+    /**
+     * 清理过期的请求（单独启动一个线程处理）
+     */
+    private void clean() &#123;
+        // 判断是否超出当前时间窗口内
+        requestList.removeIf(requestTime -&gt; System.currentTimeMillis() - requestTime &gt; windowUnit);
+    &#125;
+
+&#125;
+</code></pre>
+<h2 id="2-3-优缺点"><a href="#2-3-优缺点" class="headerlink" title="2.3 优缺点"></a><strong>2.3 优缺点</strong></h2><p><strong>优点：</strong> 解决了固定窗口算法的窗口边界问题，避免突发流量压垮服务器。</p>
+<p><strong>缺点：</strong> 还是存在限流不够平滑的问题。例如：限流是每秒3个，在第一毫秒发送了3个请求，达到限流，剩余窗口时间的请求都将会被拒绝，体验不好。</p>
+<h1 id="3-漏桶算法"><a href="#3-漏桶算法" class="headerlink" title="3. 漏桶算法"></a><strong>3. 漏桶算法</strong></h1><h2 id="3-1-实现原理"><a href="#3-1-实现原理" class="headerlink" title="3.1 实现原理"></a><strong>3.1 实现原理</strong></h2><p>漏桶限流算法是一种常用的流量整形（Traffic Shaping）和流量控制（Traffic Policing）的算法，它可以有效地控制数据的传输速率以及防止网络拥塞。</p>
+<p>实现原理是：</p>
+<ol>
+<li>一个固定容量的漏桶，按照固定速率出水（处理请求）；</li>
+<li>当流入水（请求数量）的速度过大会直接溢出（请求数量超过限制则直接拒绝）。</li>
+<li>桶里的水（请求）不够则无法出水（桶内没有请求则不处理）。</li>
+</ol>
+<p>当请求流量正常或者较小的时候，请求能够得到正常的处理。当请求流量过大时，漏桶限流算法可以通过丢弃部分请求来防止系统过载。</p>
+<p>这种算法的一个重要特性是，输出数据的速率始终是稳定的，无论输入的数据流量如何变化。这就确保了系统的负载不会超过预设的阈值。但是，由于漏桶的出口速度是固定的，所以无法处理突发流量。此外，如果入口流量过大，漏桶可能会溢出，导致数据丢失。</p>
+<p><img src="/../imgs/blog39/4.jpg"></p>
+<h2 id="3-2-代码实现"><a href="#3-2-代码实现" class="headerlink" title="3.2 代码实现"></a><strong>3.2 代码实现</strong></h2><pre><code class="java">public class LeakyBucketLimiter &#123;
+
+    /**
+     * 桶的最大容量
+     */
+    public static long threshold = 10;
+    /**
+     * 桶内当前水量
+     */
+    public static long count = 0;
+    /**
+     * 漏水速率（每秒5次）
+     */
+    public static long leakRate = 5;
+    /**
+     * 上次漏水时间
+     */
+    public static long lastLeakTime = System.currentTimeMillis();
+
+    /**
+     * 限流方法，返回true表示通过
+     */
+    public boolean limit() &#123;
+        // 调用漏水方法
+        this.leak();
+        // 判断是否超过最大请求数量
+        if (count &lt; threshold) &#123;
+            count++;
+            return true;
+        &#125;
+        return false;
+    &#125;
+
+    /**
+     * 漏水方法，计算并更新这段时间内漏水量
+     */
+    private void leak() &#123;
+        // 获取系统当前时间
+        long currentTime = System.currentTimeMillis();
+        // 计算这段时间内，需要流出的水量
+        long leakWater = (currentTime - lastLeakTime) * leakRate / 1000;
+        count = Math.max(count - leakWater, 0);
+        lastLeakTime = currentTime;
+    &#125;
+
+&#125;
+</code></pre>
+<h2 id="3-3-优缺点"><a href="#3-3-优缺点" class="headerlink" title="3.3 优缺点"></a><strong>3.3 优缺点</strong></h2><p><strong>优点：</strong></p>
+<ol>
+<li><strong>平滑流量。</strong>由于漏桶算法以固定的速率处理请求，可以有效地平滑和整形流量，避免流量的突发和波动（类似于消息队列的削峰填谷的作用）。</li>
+<li><strong>防止过载。</strong>当流入的请求超过桶的容量时，可以直接丢弃请求，防止系统过载。</li>
+</ol>
+<p><strong>缺点：</strong></p>
+<ol>
+<li><strong>无法处理突发流量</strong>：由于漏桶的出口速度是固定的，无法处理突发流量。例如，即使在流量较小的时候，也无法以更快的速度处理请求。</li>
+<li><strong>可能会丢失数据</strong>：如果入口流量过大，超过了桶的容量，那么就需要丢弃部分请求。在一些不能接受丢失请求的场景中，这可能是一个问题。</li>
+<li><strong>不适合速率变化大的场景</strong>：如果速率变化大，或者需要动态调整速率，那么漏桶算法就无法满足需求。</li>
+</ol>
+<h1 id="4-令牌桶算法"><a href="#4-令牌桶算法" class="headerlink" title="4. 令牌桶算法"></a><strong>4. 令牌桶算法</strong></h1><h2 id="4-1-实现原理"><a href="#4-1-实现原理" class="headerlink" title="4.1 实现原理"></a><strong>4.1 实现原理</strong></h2><p>令牌桶限流算法是一种常用的流量整形和速率限制算法。与漏桶算法一样，令牌桶算法也是用来控制发送到网络上的数据的数量。</p>
+<p>实现原理：</p>
+<ol>
+<li>系统以固定的速率向桶中添加令牌；</li>
+<li>当有请求到来时，会尝试从桶中移除一个令牌，如果桶中有足够的令牌，则请求可以被处理或数据包可以被发送；</li>
+<li>如果桶中没有令牌，那么请求将被拒绝；</li>
+<li>桶中的令牌数不能超过桶的容量，如果新生成的令牌超过了桶的容量，那么新的令牌会被丢弃。</li>
+</ol>
+<p>令牌桶算法的一个重要特性是，它能够应对突发流量。当桶中有足够的令牌时，可以一次性处理多个请求，这对于需要处理突发流量的应用场景非常有用。但是又不会无限制的增加处理速率导致压垮服务器，因为桶内令牌数量是有限制的。</p>
+<p><img src="/../imgs/blog39/3.jpg"></p>
+<h2 id="4-2-代码实现"><a href="#4-2-代码实现" class="headerlink" title="4.2 代码实现"></a><strong>4.2 代码实现</strong></h2><pre><code class="java">public class TokenBucketLimiter &#123;
+
+    /**
+     * 桶的最大容量
+     */
+    public static long threshold = 10;
+    /**
+     * 桶内当前的令牌数量
+     */
+    public static long count = 0;
+    /**
+     * 令牌生成速率（每秒5次）
+     */
+    public static long tokenRate = 5;
+    /**
+     * 上次生成令牌的时间
+     */
+    public static long lastRefillTime = System.currentTimeMillis();
+
+    /**
+     * 限流方法，返回true表示通过
+     */
+    public boolean limit() &#123;
+        // 调用生成令牌方法
+        this.refillTokens();
+        // 判断桶内是否还有令牌
+        if (count &gt; 0) &#123;
+            count--;
+            return true;
+        &#125;
+        return false;
+    &#125;
+
+    /**
+     * 生成令牌方法，计算并更新这段时间内生成的令牌数量
+     */
+    private void refillTokens() &#123;
+        long currentTime = System.currentTimeMillis();
+        // 计算这段时间内，需要生成的令牌数量
+        long refillTokens = (currentTime - lastRefillTime) * tokenRate / 1000;
+        count = Math.min(count + refillTokens, threshold);
+        lastRefillTime = currentTime;
+    &#125;
+
+&#125;
+</code></pre>
+<h2 id="4-3-优缺点"><a href="#4-3-优缺点" class="headerlink" title="4.3 优缺点"></a><strong>4.3 优缺点</strong></h2><p><strong>优点：</strong></p>
+<ol>
+<li><strong>可以处理突发流量</strong>：令牌桶算法可以处理突发流量。当桶满时，能够以最大速度处理请求。这对于需要处理突发流量的应用场景非常有用。</li>
+<li><strong>限制平均速率</strong>：在长期运行中，数据的传输率会被限制在预定义的平均速率（即生成令牌的速率）。</li>
+<li><strong>灵活性</strong>：与漏桶算法相比，令牌桶算法提供了更大的灵活性。例如，可以动态地调整生成令牌的速率。</li>
+</ol>
+<p><strong>缺点：</strong></p>
+<ol>
+<li><strong>可能导致过载</strong>：如果令牌产生的速度过快，可能会导致大量的突发流量，这可能会使网络或服务过载。</li>
+<li><strong>需要存储空间</strong>：令牌桶需要一定的存储空间来保存令牌，可能会导致内存资源的浪费。</li>
+<li><strong>实现稍复杂</strong>：相比于计数器算法，令牌桶算法的实现稍微复杂一些。</li>
+</ol>
+<h1 id="5-总结"><a href="#5-总结" class="headerlink" title="5. 总结"></a><strong>5. 总结</strong></h1><p>每种算法都有其特点和适用场景，下面我们来对它们进行简单的总结和比较。</p>
+<p><strong>固定窗口算法</strong>实现简单，但是限流不够平滑，存在窗口边界问题，适用于需要简单实现限流的场景。</p>
+<p><strong>滑动窗口算法</strong>解决了窗口边界问题，但是还是存在限流不够平滑的问题，适用于需要控制平均请求速率的场景。</p>
+<p><strong>漏桶算法</strong>的优点是流量处理更平滑，但是无法应对突发流量，适用于需要平滑流量的场景。</p>
+<p><strong>令牌桶算法</strong>既能平滑流量，又能处理突发流量，适用于需要处理突发流量的场景。</p>
+<p>祝自己生日快乐</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="http://example.com">Mercury</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="http://example.com/2023/11/16/blog39/">http://example.com/2023/11/16/blog39/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="http://example.com" target="_blank">Mercury个人博客</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a></div><div class="post_share"><div class="social-share" data-image="/img/avatar.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="next-post pull-full"><a href="/2023/11/09/blog35/" title="使用canal和RabbitMQ实现缓存数据同步"><div class="cover" style="background: var(--default-bg-color)"></div><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">使用canal和RabbitMQ实现缓存数据同步</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2023/09/21/blog21/" title="分布式ID"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2023-09-21</div><div class="title">分布式ID</div></div></a></div><div><a href="/2023/09/24/blog23/" title="Paxos协议和Raft协议"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2023-09-24</div><div class="title">Paxos协议和Raft协议</div></div></a></div><div><a href="/2023/09/21/blog22/" title="分布式事务"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2023-09-21</div><div class="title">分布式事务</div></div></a></div></div></div><hr/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="lv-container" data-id="city" data-uid="MTAyMC81ODUzMS8zNDk5NA=="></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Mercury</div><div class="author-info__description">与谁同坐。明月清风我</div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">39</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">13</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Mercury4915"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">java学习日记，不定时更新</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-%E5%9B%BA%E5%AE%9A%E7%AA%97%E5%8F%A3%E7%AE%97%E6%B3%95"><span class="toc-number">1.</span> <span class="toc-text">1. 固定窗口算法</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-1-%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="toc-number">1.1.</span> <span class="toc-text">1.1 实现原理</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-2-%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="toc-number">1.2.</span> <span class="toc-text">1.2 代码实现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-3-%E4%BC%98%E7%BC%BA%E7%82%B9"><span class="toc-number">1.3.</span> <span class="toc-text">1.3 优缺点</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-%E6%BB%91%E5%8A%A8%E7%AA%97%E5%8F%A3%E7%AE%97%E6%B3%95"><span class="toc-number">2.</span> <span class="toc-text">2. 滑动窗口算法</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="toc-number">2.1.</span> <span class="toc-text">2.1 实现原理</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-2-%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="toc-number">2.2.</span> <span class="toc-text">2.2 代码实现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-3-%E4%BC%98%E7%BC%BA%E7%82%B9"><span class="toc-number">2.3.</span> <span class="toc-text">2.3 优缺点</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-%E6%BC%8F%E6%A1%B6%E7%AE%97%E6%B3%95"><span class="toc-number">3.</span> <span class="toc-text">3. 漏桶算法</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#3-1-%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="toc-number">3.1.</span> <span class="toc-text">3.1 实现原理</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-2-%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="toc-number">3.2.</span> <span class="toc-text">3.2 代码实现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-3-%E4%BC%98%E7%BC%BA%E7%82%B9"><span class="toc-number">3.3.</span> <span class="toc-text">3.3 优缺点</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#4-%E4%BB%A4%E7%89%8C%E6%A1%B6%E7%AE%97%E6%B3%95"><span class="toc-number">4.</span> <span class="toc-text">4. 令牌桶算法</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#4-1-%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="toc-number">4.1.</span> <span class="toc-text">4.1 实现原理</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-2-%E4%BB%A3%E7%A0%81%E5%AE%9E%E7%8E%B0"><span class="toc-number">4.2.</span> <span class="toc-text">4.2 代码实现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-3-%E4%BC%98%E7%BC%BA%E7%82%B9"><span class="toc-number">4.3.</span> <span class="toc-text">4.3 优缺点</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#5-%E6%80%BB%E7%BB%93"><span class="toc-number">5.</span> <span class="toc-text">5. 总结</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/11/16/blog39/" title="四种常见限流算法原理及实现">四种常见限流算法原理及实现</a><time datetime="2023-11-16T13:16:48.000Z" title="发表于 2023-11-16 21:16:48">2023-11-16</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/11/09/blog35/" title="使用canal和RabbitMQ实现缓存数据同步">使用canal和RabbitMQ实现缓存数据同步</a><time datetime="2023-11-09T09:01:31.000Z" title="发表于 2023-11-09 17:01:31">2023-11-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/11/09/blog34/" title="使用canal实现MySQL和ES数据同步">使用canal实现MySQL和ES数据同步</a><time datetime="2023-11-09T09:01:31.000Z" title="发表于 2023-11-09 17:01:31">2023-11-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/11/08/blog9/" title="Hystrix简介">Hystrix简介</a><time datetime="2023-11-08T10:58:56.000Z" title="发表于 2023-11-08 18:58:56">2023-11-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/11/06/blog11/" title="ElasticSearch分片集群">ElasticSearch分片集群</a><time datetime="2023-11-06T12:00:34.000Z" title="发表于 2023-11-06 20:00:34">2023-11-06</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2023 By Mercury</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="直达评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"><script>function loadLivere () {
+  if (typeof LivereTower === 'object') {
+    window.LivereTower.init()
+  }
+  else {
+    (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+        if (typeof LivereTower === 'function') { return; }
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+        e.parentNode.insertBefore(j, e);
+    })(document, 'script');
+  }
+}
+
+if ('Livere' === 'Livere' || !true) {
+  if (true) btf.loadComment(document.getElementById('lv-container'), loadLivere)
+  else loadLivere()
+}
+else {
+  function loadOtherComment () {
+    loadLivere()
+  }
+}</script></div><script defer="defer" id="fluttering_ribbon" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/canvas-fluttering-ribbon.min.js"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="is-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据库加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div class="no-result" id="local-search-results"></div><div id="local-search-stats-wrap"></div></div></div><div id="search-mask"></div><script src="/js/search/local-search.js"></script></div></div></body></html>
