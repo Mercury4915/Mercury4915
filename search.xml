@@ -942,11 +942,36 @@
     
     
     <entry>
-      <title>礼盒的最大甜蜜度</title>
-      <link href="/2023/06/01/blog5/"/>
-      <url>/2023/06/01/blog5/</url>
+      <title>innodb行锁实现方式</title>
+      <link href="/2023/06/22/blog41/"/>
+      <url>/2023/06/22/blog41/</url>
       
-        <content type="html"><![CDATA[<h3 id="题目介绍"><a href="#题目介绍" class="headerlink" title="题目介绍"></a>题目介绍</h3><p>​题目链接：<a href="https://leetcode.cn/problems/longest-substring-without-repeating-characters/description/"><a href="https://leetcode.cn/problems/maximum-tastiness-of-candy-basket/description/">2517. 礼盒的最大甜蜜度 - 力扣（Leetcode）</a></a></p><p>​给你一个正整数数组 <code>price</code> ，其中 <code>price[i]</code> 表示第 <code>i</code> 类糖果的价格，另给你一个正整数 <code>k</code> 。</p><p>商店组合 <code>k</code> 类 <strong>不同</strong> 糖果打包成礼盒出售。礼盒的 <strong>甜蜜度</strong> 是礼盒中任意两种糖果 <strong>价格</strong> 绝对差的最小值。</p><p>返回礼盒的 <strong>最大</strong> 甜蜜度<em>。</em></p><p><strong>示例 1：</strong></p><pre><code>输入：price = [13,5,1,8,21,2], k = 3输出：8解释：选出价格分别为 [13,5,21] 的三类糖果。礼盒的甜蜜度为 min(|13 - 5|, |13 - 21|, |5 - 21|) = min(8, 8, 16) = 8 。可以证明能够取得的最大甜蜜度就是 8 。</code></pre><p><strong>示例 2：</strong></p><pre><code>输入：price = [1,3,1], k = 2输出：2解释：选出价格分别为 [1,3] 的两类糖果。 礼盒的甜蜜度为 min(|1 - 3|) = min(2) = 2 。可以证明能够取得的最大甜蜜度就是 2 。</code></pre><p><strong>示例 3：</strong></p><pre><code>输入：price = [7,7,7,7], k = 2输出：0解释：从现有的糖果中任选两类糖果，甜蜜度都会是 0 。</code></pre><h3 id="题目思路"><a href="#题目思路" class="headerlink" title="题目思路"></a>题目思路</h3><p>​最小最大，基本要想到二分了，直接二分甜蜜值，因为选择的差值跟顺序无关，我们可以排序后贪心，当前选择大于之前选择加甜蜜值就统计答案一次，如果最终次数大于等于tastiness，说明甜蜜值还可以更大，收缩左边界，否则收缩右边界。</p><h3 id="代码"><a href="#代码" class="headerlink" title="代码"></a>代码</h3><pre><code class="java">class Solution &#123;  public int maximumTastiness(int[] price, int k) &#123;​    Arrays.sort(price);​    int left = 0, right = price[price.length - 1];​    while (left +1 != right) &#123;​      int mid = (left + right) / 2;​      if (check(price, k, mid)) &#123;​        left = mid;​      &#125; else &#123;​        right = mid;​      &#125;​    &#125;​    return left;  &#125;  public boolean check(int[] price, int k, int tastiness) &#123;​    int prev = Integer.MIN_VALUE / 2;​    int cnt = 0;​    for (int p : price) &#123;​      if (p - prev &gt;= tastiness) &#123;​        cnt++;​        prev = p;​      &#125;​    &#125;​    return cnt &gt;= k;  &#125;&#125;</code></pre><p>甜蜜的祝自己节日快乐</p>]]></content>
+        <content type="html"><![CDATA[<p>InnoDB行锁是通过给索引上的索引项加锁来实现的，这一点MySQL与Oracle不同，后者是通过在数据块中对相应数据行加锁来实现的。 InnoDB这种行锁实现特点意味着：只有通过索引条件检索数据，InnoDB才使用行级锁，否则，InnoDB将使用表锁！<br>在实际应用中，要特别注意InnoDB行锁的这一特性，不然的话，可能导致大量的锁冲突，从而影响并发性能。下面通过一些实际例子来加以说明.</p><p>1、在不通过索引条件查询的时候，InnoDB确实使用的是表锁，而不是行锁<br><img src="/../imgs/blog41/image-20231122100007465.png" alt="image-20231122100007465"></p><p>1）InnoDB存储引擎的表在不使用索引时使用表锁例子</p><p><img src="/../imgs/blog41/image-20231122100038138.png" alt="image-20231122100038138"></p><p>在上如表中，看起来session_1只给一行加了排他锁，但session_2在请求其他行的排他锁时，却出现了锁等待！原因就是在没有索引的情况下，InnoDB只能使用表锁。</p><p>2）有了索引以后，在对索引字段查询时，使用的就是行级锁：<br>添加索引：alter table tab_no_index add index ind_tab_no_index_id (id);<br><img src="/../imgs/blog41/image-20231122100109624.png" alt="image-20231122100109624"></p><p>从上表可知，由于使用了行级锁，所以对不同行使用排它锁相互不影响。</p><p>2、 由于MySQL的行锁是针对索引加的锁，不是针对记录加的锁，所以虽然是访问不同行的记录，但是如果是使用相同的索引键，是会出现锁冲突的。应用设计的时候要注意这一点。<br>表tab_with_index的id字段有索引，name字段没有索引。<br><img src="/../imgs/blog41/image-20231122100139624.png" alt="image-20231122100139624"></p><p>InnoDB存储引擎使用相同索引键的阻塞例子</p><p><img src="/../imgs/blog41/image-20231122100158209.png" alt="image-20231122100158209"></p><p>3、当表有多个索引的时候，不同的事务可以使用不同的索引锁定不同的行，另外，不论是使用主键索引、唯一索引或普通索引，InnoDB都会使用行锁来对数据加锁。<br>表tab_with_index的id字段有普通索引，name字段有普通索引：<br>InnoDB存储引擎的表使用不同索引的阻塞例子</p><p><img src="/../imgs/blog41/image-20231122100218294.png" alt="image-20231122100218294"></p><p>4、间隙锁（Next-Key锁）<br>当我们用范围条件而不是相等条件检索数据，并请求共享或排他锁时，InnoDB会给符合条件的已有数据记录的索引项加锁；对于键值在条件范围内但并不存在的记录，叫做“间隙（GAP)”，InnoDB也会对这个“间隙”加锁，这种锁机制就是所谓的间隙锁（Next-Key锁）。</p><p>举例来说，假如emp表中只有101条记录，其empid的值分别是 1,2,…,100,101，下面的SQL：<br>Select * from emp where empid &gt; 100 for update;<br>是一个范围条件的检索，InnoDB不仅会对符合条件的empid值为101的记录加锁，也会对empid大于101（这些记录并不存在）的“间隙”加锁。<br>InnoDB使用间隙锁的目的，一方面是为了防止幻读，以满足相关隔离级别的要求，对于上面的例子，要是不使用间隙锁，如果其他事务插入了empid大于100的任何记录，那么本事务如果再次执行上述语句，就会发生幻读；另外一方面，是为了满足其恢复和复制的需要。有关其恢复和复制对锁机制的影响，以及不同隔离级别下InnoDB使用间隙锁的情况，在后续的章节中会做进一步介绍。</p><p>很显然，在使用范围条件检索并锁定记录时，InnoDB这种加锁机制会阻塞符合条件范围内键值的并发插入，这往往会造成严重的锁等待。因此，在实际应用开发中，尤其是并发插入比较多的应用，我们要尽量优化业务逻辑，尽量使用相等条件来访问更新数据，避免使用范围条件。</p><p>还要特别说明的是，InnoDB除了通过范围条件加锁时使用间隙锁外，如果使用相等条件请求给一个不存在的记录加锁，InnoDB也会使用间隙锁！<br>下面例子中，假如emp表中只有101条记录，其empid的值分别是1,2,……,100,101。<br>InnoDB存储引擎的间隙锁阻塞例子<br><img src="/../imgs/blog41/image-20231122100241257.png" alt="image-20231122100241257"></p><p>5、即便在条件中使用了索引字段，但是否使用索引来检索数据是由MySQL通过判断不同执行计划的代价来决定的，如果MySQL认为全表扫描效率更高，比如对一些很小的表，它就不会使用索引，这种情况下InnoDB将使用表锁，而不是行锁。因此，在分析锁冲突时，别忘了检查SQL的执行计划，以确认是否真正使用了索引。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 学习笔记 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> MySQL </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>无重复字符的最长子串</title>
+      <link href="/2023/06/21/blog3/"/>
+      <url>/2023/06/21/blog3/</url>
+      
+        <content type="html"><![CDATA[<h3 id="题目介绍"><a href="#题目介绍" class="headerlink" title="题目介绍"></a>题目介绍</h3><p>​题目链接：<a href="https://leetcode.cn/problems/longest-substring-without-repeating-characters/description/">3. 无重复字符的最长子串 - 力扣（Leetcode）</a></p><p>​给定一个字符串 <code>s</code> ，请你找出其中不含有重复字符的 <strong>最长子串</strong> 的长度。</p><p><strong>示例 1:</strong></p><pre><code>输入: s = &quot;abcabcbb&quot;输出: 3 解释: 因为无重复字符的最长子串是 &quot;abc&quot;，所以其长度为 3。</code></pre><p><strong>示例 2:</strong></p><pre><code>输入: s = &quot;bbbbb&quot;输出: 1解释: 因为无重复字符的最长子串是 &quot;b&quot;，所以其长度为 1。</code></pre><p><strong>示例 3:</strong></p><pre><code>输入: s = &quot;pwwkew&quot;输出: 3解释: 因为无重复字符的最长子串是 &quot;wke&quot;，所以其长度为 3。     请注意，你的答案必须是 子串 的长度，&quot;pwke&quot; 是一个子序列，不是子串。</code></pre><h3 id="题目思路"><a href="#题目思路" class="headerlink" title="题目思路"></a>题目思路</h3><p>​没啥好说的，一眼滑动窗口。。。</p><p>​以示例1为例，对于“abcabcbb”，定义两个指针（ left 和 right ），初始都指向字符串0位置，两个指针之间的字符串即为当前找到的子串，right指针向右遍历，使用hashmap记录出现过的字符和字符最后一次出现的位置，当前字串出现重复字符时（即hashmap中存在当前right指向的字符），将left指针移动到重复字符的下一个位置即可（map.get(s.charAt(i)) + 1），遍历过程中记录字串长度最大值。</p><h3 id="代码"><a href="#代码" class="headerlink" title="代码"></a>代码</h3><pre><code class="java">class Solution &#123;  public int lengthOfLongestSubstring(String s) &#123;​    if (s.length() &lt;=  1)&#123;​      return s.length();​    &#125;​    HashMap&lt;Character, Integer&gt; map = new HashMap&lt;Character, Integer&gt;();​    int ans = 0;​    int left = 0;​    for(int i = 0; i &lt; s.length(); i++)&#123;​      if(map.containsKey(s.charAt(i)))&#123;​        left = Math.max(left, map.get(s.charAt(i)) + 1);​      &#125;​      map.put(s.charAt(i), i);​      ans = Math.max(ans, i-left+1);​    &#125;​    return ans;  &#125;&#125;</code></pre>]]></content>
       
       
       <categories>
@@ -967,11 +992,11 @@
     
     
     <entry>
-      <title>无重复字符的最长子串</title>
-      <link href="/2023/05/31/blog3/"/>
-      <url>/2023/05/31/blog3/</url>
+      <title>礼盒的最大甜蜜度</title>
+      <link href="/2023/06/01/blog5/"/>
+      <url>/2023/06/01/blog5/</url>
       
-        <content type="html"><![CDATA[<h3 id="题目介绍"><a href="#题目介绍" class="headerlink" title="题目介绍"></a>题目介绍</h3><p>​题目链接：<a href="https://leetcode.cn/problems/longest-substring-without-repeating-characters/description/">3. 无重复字符的最长子串 - 力扣（Leetcode）</a></p><p>​给定一个字符串 <code>s</code> ，请你找出其中不含有重复字符的 <strong>最长子串</strong> 的长度。</p><p><strong>示例 1:</strong></p><pre><code>输入: s = &quot;abcabcbb&quot;输出: 3 解释: 因为无重复字符的最长子串是 &quot;abc&quot;，所以其长度为 3。</code></pre><p><strong>示例 2:</strong></p><pre><code>输入: s = &quot;bbbbb&quot;输出: 1解释: 因为无重复字符的最长子串是 &quot;b&quot;，所以其长度为 1。</code></pre><p><strong>示例 3:</strong></p><pre><code>输入: s = &quot;pwwkew&quot;输出: 3解释: 因为无重复字符的最长子串是 &quot;wke&quot;，所以其长度为 3。     请注意，你的答案必须是 子串 的长度，&quot;pwke&quot; 是一个子序列，不是子串。</code></pre><h3 id="题目思路"><a href="#题目思路" class="headerlink" title="题目思路"></a>题目思路</h3><p>​没啥好说的，一眼滑动窗口。。。</p><p>​以示例1为例，对于“abcabcbb”，定义两个指针（ left 和 right ），初始都指向字符串0位置，两个指针之间的字符串即为当前找到的子串，right指针向右遍历，使用hashmap记录出现过的字符和字符最后一次出现的位置，当前字串出现重复字符时（即hashmap中存在当前right指向的字符），将left指针移动到重复字符的下一个位置即可（map.get(s.charAt(i)) + 1），遍历过程中记录字串长度最大值。</p><h3 id="代码"><a href="#代码" class="headerlink" title="代码"></a>代码</h3><pre><code class="java">class Solution &#123;  public int lengthOfLongestSubstring(String s) &#123;​    if (s.length() &lt;=  1)&#123;​      return s.length();​    &#125;​    HashMap&lt;Character, Integer&gt; map = new HashMap&lt;Character, Integer&gt;();​    int ans = 0;​    int left = 0;​    for(int i = 0; i &lt; s.length(); i++)&#123;​      if(map.containsKey(s.charAt(i)))&#123;​        left = Math.max(left, map.get(s.charAt(i)) + 1);​      &#125;​      map.put(s.charAt(i), i);​      ans = Math.max(ans, i-left+1);​    &#125;​    return ans;  &#125;&#125;</code></pre>]]></content>
+        <content type="html"><![CDATA[<h3 id="题目介绍"><a href="#题目介绍" class="headerlink" title="题目介绍"></a>题目介绍</h3><p>​题目链接：<a href="https://leetcode.cn/problems/longest-substring-without-repeating-characters/description/"><a href="https://leetcode.cn/problems/maximum-tastiness-of-candy-basket/description/">2517. 礼盒的最大甜蜜度 - 力扣（Leetcode）</a></a></p><p>​给你一个正整数数组 <code>price</code> ，其中 <code>price[i]</code> 表示第 <code>i</code> 类糖果的价格，另给你一个正整数 <code>k</code> 。</p><p>商店组合 <code>k</code> 类 <strong>不同</strong> 糖果打包成礼盒出售。礼盒的 <strong>甜蜜度</strong> 是礼盒中任意两种糖果 <strong>价格</strong> 绝对差的最小值。</p><p>返回礼盒的 <strong>最大</strong> 甜蜜度<em>。</em></p><p><strong>示例 1：</strong></p><pre><code>输入：price = [13,5,1,8,21,2], k = 3输出：8解释：选出价格分别为 [13,5,21] 的三类糖果。礼盒的甜蜜度为 min(|13 - 5|, |13 - 21|, |5 - 21|) = min(8, 8, 16) = 8 。可以证明能够取得的最大甜蜜度就是 8 。</code></pre><p><strong>示例 2：</strong></p><pre><code>输入：price = [1,3,1], k = 2输出：2解释：选出价格分别为 [1,3] 的两类糖果。 礼盒的甜蜜度为 min(|1 - 3|) = min(2) = 2 。可以证明能够取得的最大甜蜜度就是 2 。</code></pre><p><strong>示例 3：</strong></p><pre><code>输入：price = [7,7,7,7], k = 2输出：0解释：从现有的糖果中任选两类糖果，甜蜜度都会是 0 。</code></pre><h3 id="题目思路"><a href="#题目思路" class="headerlink" title="题目思路"></a>题目思路</h3><p>​最小最大，基本要想到二分了，直接二分甜蜜值，因为选择的差值跟顺序无关，我们可以排序后贪心，当前选择大于之前选择加甜蜜值就统计答案一次，如果最终次数大于等于tastiness，说明甜蜜值还可以更大，收缩左边界，否则收缩右边界。</p><h3 id="代码"><a href="#代码" class="headerlink" title="代码"></a>代码</h3><pre><code class="java">class Solution &#123;  public int maximumTastiness(int[] price, int k) &#123;​    Arrays.sort(price);​    int left = 0, right = price[price.length - 1];​    while (left +1 != right) &#123;​      int mid = (left + right) / 2;​      if (check(price, k, mid)) &#123;​        left = mid;​      &#125; else &#123;​        right = mid;​      &#125;​    &#125;​    return left;  &#125;  public boolean check(int[] price, int k, int tastiness) &#123;​    int prev = Integer.MIN_VALUE / 2;​    int cnt = 0;​    for (int p : price) &#123;​      if (p - prev &gt;= tastiness) &#123;​        cnt++;​        prev = p;​      &#125;​    &#125;​    return cnt &gt;= k;  &#125;&#125;</code></pre><p>甜蜜的祝自己节日快乐</p>]]></content>
       
       
       <categories>
