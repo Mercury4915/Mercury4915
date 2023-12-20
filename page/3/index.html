@@ -55,7 +55,7 @@
   isHome: true,
   isHighlightShrink: false,
   isToc: false,
-  postUpdate: '2023-11-22 10:04:59'
+  postUpdate: '2023-12-20 10:34:29'
 }</script><noscript><style type="text/css">
   #nav {
     opacity: 1
@@ -159,24 +159,7 @@
       }
     }
     detectApple()
-    })(window)</script><link rel="stylesheet" href="/themes/butterfly/source/css/mouse.css?1"><meta name="generator" content="Hexo 6.3.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="/img/avatar.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">41</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">13</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-graduation-cap"></i><span> 博文</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/categories/"><i class="fa-fw fa fa-archive"></i><span> 分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fa fa-folder-open"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/comment/"><i class="fa-fw fa fa-paper-plane"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于作者</span></a></div></div></div></div><div class="page" id="body-wrap"><header class="full_page" id="page-header" style="background-image: url('/img/background.jpg')"><nav id="nav"><span id="blog-info"><a href="/" title="Mercury个人博客"><span class="site-name">Mercury个人博客</span></a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search" href="javascript:void(0);"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-graduation-cap"></i><span> 博文</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/categories/"><i class="fa-fw fa fa-archive"></i><span> 分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fa fa-folder-open"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/comment/"><i class="fa-fw fa fa-paper-plane"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于作者</span></a></div></div><div id="toggle-menu"><a class="site-page" href="javascript:void(0);"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="site-info"><h1 id="site-title">Mercury个人博客</h1></div><div id="scroll-down"><i class="fas fa-angle-down scroll-down-effects"></i></div></header><main class="layout" id="content-inner"><div class="recent-posts" id="recent-posts"><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/09/20/blog20/" title="RocketMQ高级功能+源码分析">RocketMQ高级功能+源码分析</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-09-20T12:42:35.000Z" title="发表于 2023-09-20 20:42:35">2023-09-20</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">1. 高级功能1.1 消息存储分布式队列因为有高可靠性的要求，所以数据要进行持久化存储。
-
-
-消息生成者发送消息
-MQ收到消息，将消息进行持久化，在存储中新增一条记录
-返回ACK给生产者
-MQ push 消息给对应的消费者，然后等待消费者返回ACK
-如果消息消费者在指定时间内成功返回ack，那么MQ认为消息消费成功，在存储中删除消息，即执行第6步；如果MQ在指定时间内没有收到ACK，则认为消息消费失败，会尝试重新push消息,重复执行4、5、6步骤
-MQ删除消息
-
-1.1.1 存储介质
-关系型数据库DB
-
-Apache下开源的另外一款MQ—ActiveMQ（默认采用的KahaDB做消息存储）可选用JDBC的方式来做消息持久化，通过简单的xml配置信息即可实现JDBC消息存储。由于，普通关系型数据库（如Mysql）在单表数据量达到千万级别的情况下，其IO读写性能往往会出现瓶颈。在可靠性方面，该种方案非常依赖DB，如果一旦DB出现故障，则MQ的消息就无法落盘存储会导致线上故障
-
-
-文件系统
-目前业界较为常用的几款产品（RocketMQ&#x2F;Kafka&#x2F;RabbitMQ）均采 ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/09/19/blog19/" title="RocketMQ消费者负载均衡">RocketMQ消费者负载均衡</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-09-19T08:29:21.000Z" title="发表于 2023-09-19 16:29:21">2023-09-19</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">消费者负载均衡消费者从 Apache RocketMQ 获取消息消费时，通过消费者负载均衡策略，可将主题内的消息分配给指定消费者分组中的多个消费者共同分担，提高消费并发能力和消费者的水平扩展能力。本文介绍 Apache RocketMQ 消费者的负载均衡策略。
+    })(window)</script><link rel="stylesheet" href="/themes/butterfly/source/css/mouse.css?1"><meta name="generator" content="Hexo 6.3.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="/img/avatar.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">41</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">13</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-graduation-cap"></i><span> 博文</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/categories/"><i class="fa-fw fa fa-archive"></i><span> 分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fa fa-folder-open"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/comment/"><i class="fa-fw fa fa-paper-plane"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于作者</span></a></div></div></div></div><div class="page" id="body-wrap"><header class="full_page" id="page-header" style="background-image: url('/img/background.jpg')"><nav id="nav"><span id="blog-info"><a href="/" title="Mercury个人博客"><span class="site-name">Mercury个人博客</span></a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search" href="javascript:void(0);"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-graduation-cap"></i><span> 博文</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/categories/"><i class="fa-fw fa fa-archive"></i><span> 分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fa fa-folder-open"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/comment/"><i class="fa-fw fa fa-paper-plane"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于作者</span></a></div></div><div id="toggle-menu"><a class="site-page" href="javascript:void(0);"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="site-info"><h1 id="site-title">Mercury个人博客</h1></div><div id="scroll-down"><i class="fas fa-angle-down scroll-down-effects"></i></div></header><main class="layout" id="content-inner"><div class="recent-posts" id="recent-posts"><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/10/19/blog19/" title="RocketMQ消费者负载均衡">RocketMQ消费者负载均衡</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-10-19T08:29:21.000Z" title="发表于 2023-10-19 16:29:21">2023-10-19</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">消费者负载均衡消费者从 Apache RocketMQ 获取消息消费时，通过消费者负载均衡策略，可将主题内的消息分配给指定消费者分组中的多个消费者共同分担，提高消费并发能力和消费者的水平扩展能力。本文介绍 Apache RocketMQ 消费者的负载均衡策略。
 背景信息了解消费者负载均衡策略，可以帮助您解决以下问题：
 
 消息消费处理的容灾策略：您可以根据消费者负载均衡策略，明确当局部节点出现故障时，消息如何进行消费重试和容灾切换。
@@ -185,19 +168,65 @@ Apache下开源的另外一款MQ—ActiveMQ（默认采用的KahaDB做消息存�
 
 广播消费和共享消费在 Apache RocketMQ 领域模型中，同一条消息支持被多个消费者分组订阅，同时，对于每个消费者分组可以初始化多个消费者。您可以根据消费者分组和消费者的不同组合，实现以下两种不同的消费效果：
 
-消费组间广播消费 ：如上图所示，每个消费者分组只初始化唯一一个消费者，每个消费者可消费到消费者分组内 ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/09/18/blog17/" title="内存屏障">内存屏障</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-09-18T04:04:07.000Z" title="发表于 2023-09-18 12:04:07">2023-09-18</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">初识volatileJava语言规范第3版中对volatile的定义如下：Java编程语言允许线程访问共享变量，为了确保共享变量能被准确和一致地更新，线程应该确保通过排他锁单独获得这个变量。这个概念听起来有些抽象，我们先看下面一个示例：
-package com.zwx.concurrent;
-public class VolatileDemo &#123;
-    public static boolean finishFlag = false;
-    public static void main(String[] args) throws InterruptedException &#123;
-        new Thread(()-&gt;&#123;
-            int i = 0;
-            while (!finishFlag)&#123;
-                i++;            &#125;        &#125;,&quot;t1&quot;).start();
-        Thread.sleep(100 ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/09/16/blog37/" title="Tomcat类加载机制">Tomcat类加载机制</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-09-16T12:40:31.000Z" title="发表于 2023-09-16 20:40:31">2023-09-16</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">JVM 的类加载机制以及双亲委派模型，双亲委派模型的类加载过程主要分为以下几个步骤：
-（1）初始化 ClassLoader 时需要指定自己的 parent 是谁（2）先检查类是否已经被加载过，如果类已经被加载了，直接返回（3）若没有加载则调用父加载器 parent 的 loadClass() 方法进行加载（4）若父加载器为空则默认使用启动类加载器 bootstrap ClassLoader 进行加载（5）如果父类加载失败，抛出 ClassNotFoundException 异常后，再调用自己的 findClass() 方法进行加载。        前面文章也提到，如果想要破坏这种机制，那么就自定义一个类加载器（继承自 ClassLoader），并重写其中的 loadClass() 方法，使其不进行双亲委派即可。最经典例子就是 Tomcat 容器的类加载机制了，它实现了自己的类加载器 WebApp ClassLoader，并且打破了双亲委派模型，在每个应用在部署后，都会创建一个唯一的类加载器。
-1、Tomcat 的类加载器结构图：
-（1）Common ClassLoader：加载 com ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/09/01/blog31/" title="常见的Server的并发模型">常见的Server的并发模型</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-09-01T03:52:17.000Z" title="发表于 2023-09-01 11:52:17">2023-09-01</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">本文主要介绍常见的Server的并发模型，这些模型与编程语言本身无关，有的编程语言可能在语法上直接透明了模型本质，所以开发者没必要一定要基于模型去编写，只是需要知道和了解并发模型的构成和特点即可。
+消费组间广播消费 ：如上图所示，每个消费者分组只初始化唯一一个消费者，每个消费者可消费到消费者分组内 ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/10/17/blog40/" title="OAuth 2.0 的四种授权方式">OAuth 2.0 的四种授权方式</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-10-17T09:02:22.000Z" title="发表于 2023-10-17 17:02:22">2023-10-17</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">客户端凭证模式（Client Credentials）客户端凭证式（client credentials），适用于没有前端的命令行应用，即在命令行下请求令牌。
+第一步，A 应用在命令行向 B 发出请求。
+
+https://oauth.b.com/token?
+  grant_type=client_credentials&amp;
+  client_id=CLIENT_ID&amp;
+  client_secret=CLIENT_SECRET
+
+
+上面 URL 中，grant_type参数等于client_credentials表示采用凭证式，client_id和client_secret用来让 B 确认 A 的身份。
+第二步，B 网站验证通过以后，直接返回令牌。
+这种方式给出的令牌，是针对第三方应用的，而不是针对用户的，即有可能多个用户共享同一个令牌。
+这是最简单的一种模式，我们可以直接向验证服务器请求一个Token（这里可能有些小伙伴对Token的概念不是很熟悉，Token相当于是一个令牌，我们需要在验证服务器（User Account And Authentication）服务拿 ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/10/14/blog32/" title="G1垃圾回收流程">G1垃圾回收流程</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-10-14T13:01:17.000Z" title="发表于 2023-10-14 21:01:17">2023-10-14</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">G1垃圾回收流程
+G1的垃圾回收流程主要是从新生代回收开始，新生代回收与并发标记再到混合回收，接下来我们就先来说第一个新生代回收。
+G1 Yong Collection当我们的程序启动刚开始的时候会默认分配新生代5%的空间，这里我们假设分配了8个Region给Eden,1个Region给Survior（只是为了画图方便，实际可能Eden对应了有好几十甚至上百个Region），那么对应的初始内存分配如下：
+
+那么当我们的Eden区域装满，还是会触发新生代的GC，那么新生代的GC还是会通过复制算法来进行垃圾回收，同时系统进入“Stop the World”状态，然后把Eden区中的对应的Region里存活的对象拷贝到S1对应的Region中，接着回收掉Eden对应的Region中的垃圾对象。
+
+那么新生代对象什么时候进入老年代呢？跟之前一样，还是这么几个条件： 1）对象在新生代躲过了多次的垃圾回收，达到了一定的年龄，就会进入老年代。可以通过参数“-XX：MaxTenuringThreshold”进行年龄的设置
+**2）动态年龄规则判断，如果一旦发现某个新生代GC过后，同年龄的存活对象超过了 ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/10/06/blog33/" title="ES数据聚合+自动补全查询+数据同步+集群">ES数据聚合+自动补全查询+数据同步+集群</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-10-06T09:01:31.000Z" title="发表于 2023-10-06 17:01:31">2023-10-06</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">1.数据聚合**聚合（aggregations）**可以让我们极其方便的实现对数据的统计、分析、运算。例如：
+
+什么品牌的手机最受欢迎？
+这些手机的平均价格、最高价格、最低价格？
+这些手机每月的销售情况如何？
+
+实现这些统计功能的比数据库的sql要方便的多，而且查询速度非常快，可以实现近实时搜索效果。
+1.1.聚合的种类聚合常见的有三类：
+
+桶（Bucket）聚合：用来对文档做分组
+
+TermAggregation：按照文档字段值分组，例如按照品牌值分组、按照国家分组
+Date Histogram：按照日期阶梯分组，例如一周为一组，或者一月为一组
+
+
+度量（Metric）聚合：用以计算一些值，比如：最大值、最小值、平均值等
+
+Avg：求平均值
+Max：求最大值
+Min：求最小值
+Stats：同时求max、min、avg、sum等
+
+
+管道（pipeline）聚合：其它聚合的结果为基础做聚合
+
+
+
+注意：参加聚合的字段必须是keyword、日期、数值、布尔类型
+
+1.2.DSL实现聚合现在，我们要统计所有数据中的酒店品牌有几种，其实就是按照品牌对数据分组。此时可以根据酒店品牌的名称做聚合 ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/10/02/blog6/" title="redis主从同步">redis主从同步</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-10-02T02:50:44.000Z" title="发表于 2023-10-02 10:50:44">2023-10-02</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">Redis主从同步全量同步主从第一次建立连接时，会执行全量同步，将master节点的所有数据都拷贝给slave节点，流程：
+
+这里有一个问题，master如何得知salve是第一次来连接呢？？
+有几个概念，可以作为判断依据：
+
+Replication Id：简称replid，是数据集的标记，id一致则说明是同一数据集。每一个master都有唯一的replid，slave则会继承master节点的replid
+offset：偏移量，随着记录在repl_baklog中的数据增多而逐渐增大。slave完成同步时也会记录当前同步的offset。如果slave的offset小于master的offset，说明slave数据落后于master，需要更新。
+
+因此slave做数据同步，必须向master声明自己的replication id 和offset，master才可以判断到底需要同步哪些数据。
+因为slave原本也是一个master，有自己的replid和offset，当第一次变成slave，与master建立连接时，发送的replid和offset是自己的replid和offset。
+ma ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/10/01/blog31/" title="常见的Server的并发模型">常见的Server的并发模型</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-10-01T03:52:17.000Z" title="发表于 2023-10-01 11:52:17">2023-10-01</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">本文主要介绍常见的Server的并发模型，这些模型与编程语言本身无关，有的编程语言可能在语法上直接透明了模型本质，所以开发者没必要一定要基于模型去编写，只是需要知道和了解并发模型的构成和特点即可。
 那么在了解并发模型之前，我们需要两个必备的前置知识：
 
 socket网络编程
@@ -215,94 +244,54 @@ socket编程流程清晰且简单，适合学习使用，了解socket基本编�
 
 缺点：
 
-该模型并非并发模型，是串行的服务器，同一时刻，监听并响应最 ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/08/26/blog26/" title="GoF五种创建型模式">GoF五种创建型模式</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-08-26T03:18:21.000Z" title="发表于 2023-08-26 11:18:21">2023-08-26</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">创建型模式的主要关注点是“怎样创建对象？”，它的主要特点是“将对象的创建与使用分离”。
-这样可以降低系统的耦合度，使用者不需要关注对象的创建细节。
-创建型模式分为：
-
-单例模式
-工厂方法模式
-抽象工程模式
-原型模式
-建造者模式
-
-4.1 单例设计模式单例模式（Singleton Pattern）是 Java 中最简单的设计模式之一。这种类型的设计模式属于创建型模式，它提供了一种创建对象的最佳方式。
-这种模式涉及到一个单一的类，该类负责创建自己的对象，同时确保只有单个对象被创建。这个类提供了一种访问其唯一的对象的方式，可以直接访问，不需要实例化该类的对象。
-4.1.1 单例模式的结构单例模式的主要有以下角色：
-
-单例类。只能创建一个实例的类
-访问类。使用单例类
-
-4.1.2 单例模式的实现
-单例设计模式分类两种：
-​	饿汉式：类加载就会导致该单实例对象被创建	
-​	懒汉式：类加载不会导致该单实例对象被创建，而是首次使用该对象时才会创建
+该模型并非并发模型，是串行的服务器，同一时刻，监听并响应最 ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/09/20/blog20/" title="RocketMQ高级功能+源码分析">RocketMQ高级功能+源码分析</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-09-20T12:42:35.000Z" title="发表于 2023-09-20 20:42:35">2023-09-20</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">1. 高级功能1.1 消息存储分布式队列因为有高可靠性的要求，所以数据要进行持久化存储。
 
 
-饿汉式-方式1（静态变量方式）
-/**
- * 饿汉式
- *      静态变量创建类的对象
- */
-public class Singleton &# ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/08/25/blog25/" title="软件设计原则">软件设计原则</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-08-25T13:18:39.000Z" title="发表于 2023-08-25 21:18:39">2023-08-25</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">在软件开发中，为了提高软件系统的可维护性和可复用性，增加软件的可扩展性和灵活性，程序员要尽量根据6条原则来开发程序，从而提高软件开发效率、节约软件开发成本和维护成本。
-开闭原则对扩展开放，对修改关闭。在程序需要进行拓展的时候，不能去修改原有的代码，实现一个热插拔的效果。简言之，是为了使程序的扩展性好，易于维护和升级。
-想要达到这样的效果，我们需要使用接口和抽象类。
-因为抽象灵活性好，适应性广，只要抽象的合理，可以基本保持软件架构的稳定。而软件中易变的细节可以从抽象派生来的实现类来进行扩展，当软件需要发生变化时，只需要根据需求重新派生一个实现类来扩展就可以了。
-下面以 搜狗输入法 的皮肤为例介绍开闭原则的应用。
-【例】搜狗输入法 的皮肤设计。
-分析：搜狗输入法 的皮肤是输入法背景图片、窗口颜色和声音等元素的组合。用户可以根据自己的喜爱更换自己的输入法的皮肤，也可以从网上下载新的皮肤。这些皮肤有共同的特点，可以为其定义一个抽象类（AbstractSkin），而每个具体的皮肤（DefaultSpecificSkin和HeimaSpecificSkin）是其子类。用户窗体可以根据需要选择或者增 ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/08/25/blog24/" title="类及类关系的表示方法">类及类关系的表示方法</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-08-25T13:17:01.000Z" title="发表于 2023-08-25 21:17:01">2023-08-25</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">统一建模语言（Unified Modeling Language，UML）是用来设计软件的可视化建模语言。它的特点是简单、统一、图形化、能表达软件设计中的动态与静态信息。
-UML 从目标系统的不同角度出发，定义了用例图、类图、对象图、状态图、活动图、时序图、协作图、构件图、部署图等 9 种图。
-类图概述类图(Class diagram)是显示了模型的静态结构，特别是模型中存在的类、类的内部结构以及它们与其他类的关系等。类图不显示暂时性的信息。类图是面向对象建模的主要组成部分。
-类图的作用
-在软件工程中，类图是一种静态的结构图，描述了系统的类的集合，类的属性和类之间的关系，可以简化了人们对系统的理解；
-类图是系统分析和设计阶段的重要产物，是系统编码和测试的重要模型。
+消息生成者发送消息
+MQ收到消息，将消息进行持久化，在存储中新增一条记录
+返回ACK给生产者
+MQ push 消息给对应的消费者，然后等待消费者返回ACK
+如果消息消费者在指定时间内成功返回ack，那么MQ认为消息消费成功，在存储中删除消息，即执行第6步；如果MQ在指定时间内没有收到ACK，则认为消息消费失败，会尝试重新push消息,重复执行4、5、6步骤
+MQ删除消息
 
-类图表示法类的表示方式在UML类图中，类使用包含类名、属性(field) 和方法(method) 且带有分割线的矩形来表示，比如下图表示一个Employee类，它包含name,age和address这3个属性，以及work()方法。 
+1.1.1 存储介质
+关系型数据库DB
 
-属性&#x2F;方法名称前加的加号和减号表示了这个属性&#x2F;方法的可见性，UML ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/08/16/blog38/" title="TLAB简介">TLAB简介</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-08-16T12:54:54.000Z" title="发表于 2023-08-16 20:54:54">2023-08-16</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">一、Java对象的内存分配过程如何保证线程安全的？因为堆是线程之间共享的，如果在并发场景中，两个线程先后把对象的引用指向了同一个内存区域，怎么办？
-为了解决这个并发问题，对象的内存分配过程就必须进行同步控制，但是，无论使用哪种方案（有可能是CAS），都会影响内存的分配效率。然而对于 Java 来说对象的分配是高频操作。
-由此 HotSpot 虚拟机采用了这个方案：每个线程在 Java 堆中预先分配一小块内存，然后在给对象分配内存的时候，直接在自己的这块”私有“内存中进行分配，当这部分用完之后，再分配新的”私有“内存。
-这种方案被称之为 TLAB 分配。这部分 buffer 是从堆中划分出来的，但是本地线程独享的。
-二、什么是 TLABTLAB 是虚拟机在内存的 eden 区划分出来的一块专用空间，是线程专属的。在启用 TLAB 的情况下，当线程被创建时，虚拟机会为每个线程分配一块 TLAB 空间，只给当前线程使用，这样每个线程都单独拥有一个空间，如果需要分配内存，就在自己的空间上分配，这样就不存在竞争的情况，可以大大提高分配效率。
-所以说，因为有了 TLAB 技术，堆内存并不是完完全全 ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/08/16/blog29/" title="Java常见数据结构源码分析">Java常见数据结构源码分析</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-08-16T02:14:57.000Z" title="发表于 2023-08-16 10:14:57">2023-08-16</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">1.数据结构
-
-2. 一维数组2.1 数组的特点
-在Java中，数组是用来存放同一种数据类型的集合，注意只能存放同一种数据类型。
-
-//只声明了类型和长度
-数据类型[]  数组名称 = new 数据类型[数组长度];
-
-//声明了类型，初始化赋值，大小由元素个数决定
-数据类型[] 数组名称 = &#123;数组元素1，数组元素2，......&#125;
-
-例如：整型数组
+Apache下开源的另外一款MQ—ActiveMQ（默认采用的KahaDB做消息存储）可选用JDBC的方式来做消息持久化，通过简单的xml配置信息即可实现JDBC消息存储。由于，普通关系型数据库（如Mysql）在单表数据量达到千万级别的情况下，其IO读写性能往往会出现瓶颈。在可靠性方面，该种方案非常依赖DB，如果一旦DB出现故障，则MQ的消息就无法落盘存储会导致线上故障
 
 
-例如：对象数组
+文件系统
+目前业界较为常用的几款产品（RocketMQ&#x2F;Kafka&#x2F;RabbitMQ）均采 ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/09/18/blog17/" title="内存屏障">内存屏障</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-09-18T04:04:07.000Z" title="发表于 2023-09-18 12:04:07">2023-09-18</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">初识volatileJava语言规范第3版中对volatile的定义如下：Java编程语言允许线程访问共享变量，为了确保共享变量能被准确和一致地更新，线程应该确保通过排他锁单独获得这个变量。这个概念听起来有些抽象，我们先看下面一个示例：
+package com.zwx.concurrent;
+public class VolatileDemo &#123;
+    public static boolean finishFlag = false;
+    public static void main(String[] args) throws InterruptedException &#123;
+        new Thread(()-&gt;&#123;
+            int i = 0;
+            while (!finishFlag)&#123;
+                i++;            &#125;        &#125;,&quot;t1&quot;).start();
+        Thread.sleep(100 ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/09/17/blog16/" title="MyBatis的动态SQL实现原理">MyBatis的动态SQL实现原理</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-09-17T03:15:32.000Z" title="发表于 2023-09-17 11:15:32">2023-09-17</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">前言MyBatis提供了强大的动态SQL语句生成功能，以应对复杂的业务场景，本篇文章将结合MyBatis解析SQL语句的过程对MyBatis中对&lt;if**&gt;，&lt;**where**&gt;，&lt;**foreach**&gt;等动态SQL**标签的支持进行分析。
+MyBatis版本：3.5.6
+正文一. XML文档中的节点概念在分析MyBatis如何支持SQL语句之前，本小节先分析XML文档中的节点概念。XML文档中的每个成分都是一个节点，DOM对XML节点的规定如下所示。
 
+整个文档是一个文档节点；
+每个XML标签是一个元素节点；
+包含在元素节点中的文本是文本节点。
 
-
-物理结构特点：
-申请内存：一次申请一大段连续的空间，一旦申请到了，内存就固定了。
-不能动态扩展(初始化给大了，浪费；给小了，不够用)，插入快，删除和查找慢。
-存储特点：所有数据存储在这个连续的空间中，数组中的每一个元素都是一个具体的数据（或对象），所有数据都紧密排布，不能有间隔。
-
-
-具体的，如下图：
-
-
-
-2.2 自定义数组package com.atguigu01.overview.array;
-
-/**
- * @author 尚硅谷-宋红康
- * @create 14:39
- */
-class Array &#123;
-    private Object[] elementData; ...</div></div></div><nav id="pagination"><div class="pagination"><a class="extend prev" rel="prev" href="/page/2/#content-inner"><i class="fas fa-chevron-left fa-fw"></i></a><a class="page-number" href="/">1</a><a class="page-number" href="/page/2/#content-inner">2</a><span class="page-number current">3</span><a class="page-number" href="/page/4/#content-inner">4</a><a class="page-number" href="/page/5/#content-inner">5</a><a class="extend next" rel="next" href="/page/4/#content-inner"><i class="fas fa-chevron-right fa-fw"></i></a></div></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Mercury</div><div class="author-info__description">与谁同坐。明月清风我</div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">41</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">13</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Mercury4915"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">java学习日记，不定时更新</div></div><div class="sticky_layout"><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/11/17/blog40/" title="OAuth 2.0 的四种授权方式">OAuth 2.0 的四种授权方式</a><time datetime="2023-11-17T09:02:22.000Z" title="发表于 2023-11-17 17:02:22">2023-11-17</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/11/16/blog39/" title="四种常见限流算法原理及实现">四种常见限流算法原理及实现</a><time datetime="2023-11-16T13:16:48.000Z" title="发表于 2023-11-16 21:16:48">2023-11-16</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/11/09/blog34/" title="使用canal实现MySQL和ES数据同步">使用canal实现MySQL和ES数据同步</a><time datetime="2023-11-09T09:01:31.000Z" title="发表于 2023-11-09 17:01:31">2023-11-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/11/09/blog35/" title="使用canal和RabbitMQ实现缓存数据同步">使用canal和RabbitMQ实现缓存数据同步</a><time datetime="2023-11-09T09:01:31.000Z" title="发表于 2023-11-09 17:01:31">2023-11-09</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/11/08/blog9/" title="Hystrix简介">Hystrix简介</a><time datetime="2023-11-08T10:58:56.000Z" title="发表于 2023-11-08 18:58:56">2023-11-08</time></div></div></div></div><div class="card-widget card-categories"><div class="item-headline">
+以一个XML文档进行说明，如下所示。
+xml复制代码&lt;provinces&gt;
+    &lt;province name=&quot;四川&quot;&gt;
+        &lt;capital&gt;成都&lt;/capital&gt;
+    &lt;/province&gt;
+    &lt;province name=&quot;湖北&quot;&gt;
+        &lt; ...</div></div></div><div class="recent-post-item"><div class="recent-post-info no-cover"><a class="article-title" href="/2023/09/16/blog37/" title="Tomcat类加载机制">Tomcat类加载机制</a><div class="article-meta-wrap"><span class="post-meta-date"><i class="far fa-calendar-alt"></i><span class="article-meta-label">发表于</span><time datetime="2023-09-16T12:40:31.000Z" title="发表于 2023-09-16 20:40:31">2023-09-16</time></span><span class="article-meta"><span class="article-meta-separator">|</span><i class="fas fa-inbox"></i><a class="article-meta__categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="content">JVM 的类加载机制以及双亲委派模型，双亲委派模型的类加载过程主要分为以下几个步骤：
+（1）初始化 ClassLoader 时需要指定自己的 parent 是谁（2）先检查类是否已经被加载过，如果类已经被加载了，直接返回（3）若没有加载则调用父加载器 parent 的 loadClass() 方法进行加载（4）若父加载器为空则默认使用启动类加载器 bootstrap ClassLoader 进行加载（5）如果父类加载失败，抛出 ClassNotFoundException 异常后，再调用自己的 findClass() 方法进行加载。        前面文章也提到，如果想要破坏这种机制，那么就自定义一个类加载器（继承自 ClassLoader），并重写其中的 loadClass() 方法，使其不进行双亲委派即可。最经典例子就是 Tomcat 容器的类加载机制了，它实现了自己的类加载器 WebApp ClassLoader，并且打破了双亲委派模型，在每个应用在部署后，都会创建一个唯一的类加载器。
+1、Tomcat 的类加载器结构图：
+（1）Common ClassLoader：加载 com ...</div></div></div><nav id="pagination"><div class="pagination"><a class="extend prev" rel="prev" href="/page/2/#content-inner"><i class="fas fa-chevron-left fa-fw"></i></a><a class="page-number" href="/">1</a><a class="page-number" href="/page/2/#content-inner">2</a><span class="page-number current">3</span><a class="page-number" href="/page/4/#content-inner">4</a><a class="page-number" href="/page/5/#content-inner">5</a><a class="extend next" rel="next" href="/page/4/#content-inner"><i class="fas fa-chevron-right fa-fw"></i></a></div></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Mercury</div><div class="author-info__description">与谁同坐。明月清风我</div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">41</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">13</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Mercury4915"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">java学习日记，不定时更新</div></div><div class="sticky_layout"><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/12/16/blog15/" title="IO模型">IO模型</a><time datetime="2023-12-16T10:21:45.000Z" title="发表于 2023-12-16 18:21:45">2023-12-16</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/12/16/blog26/" title="GoF五种创建型模式">GoF五种创建型模式</a><time datetime="2023-12-16T03:18:21.000Z" title="发表于 2023-12-16 11:18:21">2023-12-16</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/12/15/blog25/" title="软件设计原则">软件设计原则</a><time datetime="2023-12-15T13:18:39.000Z" title="发表于 2023-12-15 21:18:39">2023-12-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/12/15/blog38/" title="TLAB简介">TLAB简介</a><time datetime="2023-12-15T12:54:54.000Z" title="发表于 2023-12-15 20:54:54">2023-12-15</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2023/12/14/blog24/" title="类及类关系的表示方法">类及类关系的表示方法</a><time datetime="2023-12-14T13:17:01.000Z" title="发表于 2023-12-14 21:17:01">2023-12-14</time></div></div></div></div><div class="card-widget card-categories"><div class="item-headline">
             <i class="fas fa-folder-open"></i>
             <span>分类</span>
             
             </div>
             <ul class="card-category-list" id="aside-cat-list">
             <li class="card-category-list-item "><a class="card-category-list-link" href="/categories/%E5%88%B7%E9%A2%98%E7%AC%94%E8%AE%B0/"><span class="card-category-list-name">刷题笔记</span><span class="card-category-list-count">5</span></a></li><li class="card-category-list-item "><a class="card-category-list-link" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/"><span class="card-category-list-name">学习笔记</span><span class="card-category-list-count">36</span></a></li>
-            </ul></div><div class="card-widget card-tags"><div class="item-headline"><i class="fas fa-tags"></i><span>标签</span></div><div class="card-tag-cloud"><a href="/tags/%E7%AE%97%E6%B3%95%E5%92%8C%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 1.5em; color: #99a9bf">算法和数据结构</a> <a href="/tags/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/" style="font-size: 1.26em; color: #999fa8">操作系统</a> <a href="/tags/ElasticSearch/" style="font-size: 1.34em; color: #99a3b0">ElasticSearch</a> <a href="/tags/redis/" style="font-size: 1.26em; color: #999fa8">redis</a> <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/" style="font-size: 1.42em; color: #99a6b7">分布式</a> <a href="/tags/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/" style="font-size: 1.26em; color: #999fa8">消息队列</a> <a href="/tags/Redis/" style="font-size: 1.1em; color: #999">Redis</a> <a href="/tags/IO/" style="font-size: 1.1em; color: #999">IO</a> <a href="/tags/SpringCloud/" style="font-size: 1.26em; color: #999fa8">SpringCloud</a> <a href="/tags/MyBatis/" style="font-size: 1.1em; color: #999">MyBatis</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 1.26em; color: #999fa8">设计模式</a> <a href="/tags/MySQL/" style="font-size: 1.26em; color: #999fa8">MySQL</a> <a href="/tags/JVM/" style="font-size: 1.18em; color: #999ca1">JVM</a></div></div><div class="card-widget card-archives"><div class="item-headline"><i class="fas fa-archive"></i><span>归档</span></div><ul class="card-archive-list"><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/11/"><span class="card-archive-list-date">十一月 2023</span><span class="card-archive-list-count">9</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/10/"><span class="card-archive-list-date">十月 2023</span><span class="card-archive-list-count">8</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/09/"><span class="card-archive-list-date">九月 2023</span><span class="card-archive-list-count">8</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/08/"><span class="card-archive-list-date">八月 2023</span><span class="card-archive-list-count">7</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/07/"><span class="card-archive-list-date">七月 2023</span><span class="card-archive-list-count">6</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/06/"><span class="card-archive-list-date">六月 2023</span><span class="card-archive-list-count">3</span></a></li></ul></div><div class="card-widget card-webinfo"><div class="item-headline"><i class="fas fa-chart-line"></i><span>网站资讯</span></div><div class="webinfo"><div class="webinfo-item"><div class="item-name">文章数目 :</div><div class="item-count">41</div></div><div class="webinfo-item"><div class="item-name">本站访客数 :</div><div class="item-count" id="busuanzi_value_site_uv"><i class="fa-solid fa-spinner fa-spin"></i></div></div><div class="webinfo-item"><div class="item-name">本站总访问量 :</div><div class="item-count" id="busuanzi_value_site_pv"><i class="fa-solid fa-spinner fa-spin"></i></div></div><div class="webinfo-item"><div class="item-name">最后更新时间 :</div><div class="item-count" id="last-push-date" data-lastPushDate="2023-11-22T02:04:58.837Z"><i class="fa-solid fa-spinner fa-spin"></i></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2023 By Mercury</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"></div><script defer="defer" id="fluttering_ribbon" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/canvas-fluttering-ribbon.min.js"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="is-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据库加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div class="no-result" id="local-search-results"></div><div id="local-search-stats-wrap"></div></div></div><div id="search-mask"></div><script src="/js/search/local-search.js"></script></div></div></body></html>
+            </ul></div><div class="card-widget card-tags"><div class="item-headline"><i class="fas fa-tags"></i><span>标签</span></div><div class="card-tag-cloud"><a href="/tags/%E7%AE%97%E6%B3%95%E5%92%8C%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84/" style="font-size: 1.5em; color: #99a9bf">算法和数据结构</a> <a href="/tags/Redis/" style="font-size: 1.1em; color: #999">Redis</a> <a href="/tags/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/" style="font-size: 1.26em; color: #999fa8">操作系统</a> <a href="/tags/ElasticSearch/" style="font-size: 1.34em; color: #99a3b0">ElasticSearch</a> <a href="/tags/SpringCloud/" style="font-size: 1.26em; color: #999fa8">SpringCloud</a> <a href="/tags/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97/" style="font-size: 1.26em; color: #999fa8">消息队列</a> <a href="/tags/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F/" style="font-size: 1.26em; color: #999fa8">设计模式</a> <a href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/" style="font-size: 1.42em; color: #99a6b7">分布式</a> <a href="/tags/MySQL/" style="font-size: 1.26em; color: #999fa8">MySQL</a> <a href="/tags/IO/" style="font-size: 1.1em; color: #999">IO</a> <a href="/tags/redis/" style="font-size: 1.26em; color: #999fa8">redis</a> <a href="/tags/MyBatis/" style="font-size: 1.1em; color: #999">MyBatis</a> <a href="/tags/JVM/" style="font-size: 1.18em; color: #999ca1">JVM</a></div></div><div class="card-widget card-archives"><div class="item-headline"><i class="fas fa-archive"></i><span>归档</span></div><ul class="card-archive-list"><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/12/"><span class="card-archive-list-date">十二月 2023</span><span class="card-archive-list-count">8</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/11/"><span class="card-archive-list-date">十一月 2023</span><span class="card-archive-list-count">12</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/10/"><span class="card-archive-list-date">十月 2023</span><span class="card-archive-list-count">6</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/09/"><span class="card-archive-list-date">九月 2023</span><span class="card-archive-list-count">6</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/08/"><span class="card-archive-list-date">八月 2023</span><span class="card-archive-list-count">6</span></a></li><li class="card-archive-list-item"><a class="card-archive-list-link" href="/archives/2023/07/"><span class="card-archive-list-date">七月 2023</span><span class="card-archive-list-count">3</span></a></li></ul></div><div class="card-widget card-webinfo"><div class="item-headline"><i class="fas fa-chart-line"></i><span>网站资讯</span></div><div class="webinfo"><div class="webinfo-item"><div class="item-name">文章数目 :</div><div class="item-count">41</div></div><div class="webinfo-item"><div class="item-name">本站访客数 :</div><div class="item-count" id="busuanzi_value_site_uv"><i class="fa-solid fa-spinner fa-spin"></i></div></div><div class="webinfo-item"><div class="item-name">本站总访问量 :</div><div class="item-count" id="busuanzi_value_site_pv"><i class="fa-solid fa-spinner fa-spin"></i></div></div><div class="webinfo-item"><div class="item-name">最后更新时间 :</div><div class="item-count" id="last-push-date" data-lastPushDate="2023-12-20T02:34:29.721Z"><i class="fa-solid fa-spinner fa-spin"></i></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2023 By Mercury</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"></div><script defer="defer" id="fluttering_ribbon" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/canvas-fluttering-ribbon.min.js"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="is-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据库加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div class="no-result" id="local-search-results"></div><div id="local-search-stats-wrap"></div></div></div><div id="search-mask"></div><script src="/js/search/local-search.js"></script></div></div></body></html>
