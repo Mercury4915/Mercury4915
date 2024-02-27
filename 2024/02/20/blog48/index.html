@@ -1,0 +1,444 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>ES索引文档流程详解 | Mercury个人博客</title><meta name="author" content="Mercury"><meta name="copyright" content="Mercury"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="文档索引步骤顺序单个文档新建单个文档所需要的步骤顺序：   客户端向 Node 1 发送新建、索引或者删除请求。 节点使用文档的 _id 确定文档属于分片 0 。请求会被转发到 Node 3，因为分片 0 的主分片目前被分配在 Node 3 上。 Node 3 在主分片上面执行请求。如果成功了，它将请求并行转发到 Node 1 和 Node 2 的副本分片上。一旦所有的副本分片都报告成功, Nod">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ES索引文档流程详解">
+<meta property="og:url" content="http://example.com/2024/02/20/blog48/index.html">
+<meta property="og:site_name" content="Mercury个人博客">
+<meta property="og:description" content="文档索引步骤顺序单个文档新建单个文档所需要的步骤顺序：   客户端向 Node 1 发送新建、索引或者删除请求。 节点使用文档的 _id 确定文档属于分片 0 。请求会被转发到 Node 3，因为分片 0 的主分片目前被分配在 Node 3 上。 Node 3 在主分片上面执行请求。如果成功了，它将请求并行转发到 Node 1 和 Node 2 的副本分片上。一旦所有的副本分片都报告成功, Nod">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/img/avatar.jpg">
+<meta property="article:published_time" content="2024-02-20T09:15:44.000Z">
+<meta property="article:modified_time" content="2024-02-27T02:16:58.303Z">
+<meta property="article:author" content="Mercury">
+<meta property="article:tag" content="ElasticSearch">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/img/avatar.jpg"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://example.com/2024/02/20/blog48/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.min.css" media="print" onload="this.media='all'"><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"/search.xml","preload":false,"top_n_per_article":1,"unescape":false,"languages":{"hits_empty":"找不到您查询的内容：${query}","hits_stats":"共找到 ${hits} 篇文章"}},
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: undefined,
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/flickr-justified-gallery/dist/fjGallery.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'ES索引文档流程详解',
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2024-02-27 10:16:58'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(win=>{
+    win.saveToLocal = {
+      set: function setWithExpiry(key, value, ttl) {
+        if (ttl === 0) return
+        const now = new Date()
+        const expiryDay = ttl * 86400000
+        const item = {
+          value: value,
+          expiry: now.getTime() + expiryDay,
+        }
+        localStorage.setItem(key, JSON.stringify(item))
+      },
+
+      get: function getWithExpiry(key) {
+        const itemStr = localStorage.getItem(key)
+
+        if (!itemStr) {
+          return undefined
+        }
+        const item = JSON.parse(itemStr)
+        const now = new Date()
+
+        if (now.getTime() > item.expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return item.value
+      }
+    }
+  
+    win.getScript = url => new Promise((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = url
+      script.async = true
+      script.onerror = reject
+      script.onload = script.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        script.onload = script.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(script)
+    })
+  
+    win.getCSS = (url,id = false) => new Promise((resolve, reject) => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = url
+      if (id) link.id = id
+      link.onerror = reject
+      link.onload = link.onreadystatechange = function() {
+        const loadState = this.readyState
+        if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+        link.onload = link.onreadystatechange = null
+        resolve()
+      }
+      document.head.appendChild(link)
+    })
+  
+      win.activateDarkMode = function () {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      win.activateLightMode = function () {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+      const t = saveToLocal.get('theme')
+    
+          if (t === 'dark') activateDarkMode()
+          else if (t === 'light') activateLightMode()
+        
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        if (asideStatus === 'hide') {
+          document.documentElement.classList.add('hide-aside')
+        } else {
+          document.documentElement.classList.remove('hide-aside')
+        }
+      }
+    
+    const detectApple = () => {
+      if(/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)){
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+    })(window)</script><link rel="stylesheet" href="/themes/butterfly/source/css/mouse.css?1"><meta name="generator" content="Hexo 6.3.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="/img/avatar.jpg" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">49</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">13</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-graduation-cap"></i><span> 博文</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/categories/"><i class="fa-fw fa fa-archive"></i><span> 分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fa fa-folder-open"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/comment/"><i class="fa-fw fa fa-paper-plane"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于作者</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('/img/default_top_img.jpg')"><nav id="nav"><span id="blog-info"><a href="/" title="Mercury个人博客"><span class="site-name">Mercury个人博客</span></a></span><div id="menus"><div id="search-button"><a class="site-page social-icon search" href="javascript:void(0);"><i class="fas fa-search fa-fw"></i><span> 搜索</span></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page group" href="javascript:void(0);"><i class="fa-fw fa fa-graduation-cap"></i><span> 博文</span><i class="fas fa-chevron-down"></i></a><ul class="menus_item_child"><li><a class="site-page child" href="/categories/"><i class="fa-fw fa fa-archive"></i><span> 分类</span></a></li><li><a class="site-page child" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></li><li><a class="site-page child" href="/archives/"><i class="fa-fw fa fa-folder-open"></i><span> 归档</span></a></li></ul></div><div class="menus_item"><a class="site-page" href="/comment/"><i class="fa-fw fa fa-paper-plane"></i><span> 留言板</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fas fa-heart"></i><span> 关于作者</span></a></div></div><div id="toggle-menu"><a class="site-page" href="javascript:void(0);"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">ES索引文档流程详解</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2024-02-20T09:15:44.000Z" title="发表于 2024-02-20 17:15:44">2024-02-20</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2024-02-27T02:16:58.303Z" title="更新于 2024-02-27 10:16:58">2024-02-27</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/">学习笔记</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="ES索引文档流程详解"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h2 id="文档索引步骤顺序"><a href="#文档索引步骤顺序" class="headerlink" title="文档索引步骤顺序"></a>文档索引步骤顺序</h2><h3 id="单个文档"><a href="#单个文档" class="headerlink" title="单个文档"></a>单个文档</h3><p>新建单个文档所需要的步骤顺序：</p>
+<p><img src="/../imgs/blog48/es-th-2-4.png" alt="img"></p>
+<ol>
+<li>客户端向 Node 1 发送新建、索引或者删除请求。</li>
+<li>节点使用文档的 _id 确定文档属于分片 0 。请求会被转发到 Node 3，因为分片 0 的主分片目前被分配在 Node 3 上。</li>
+<li>Node 3 在主分片上面执行请求。如果成功了，它将请求并行转发到 Node 1 和 Node 2 的副本分片上。一旦所有的副本分片都报告成功, Node 3 将向协调节点报告成功，协调节点向客户端报告成功。</li>
+</ol>
+<h3 id="多个文档"><a href="#多个文档" class="headerlink" title="多个文档"></a>多个文档</h3><p>使用 bulk 修改多个文档步骤顺序：</p>
+<p><img src="/../imgs/blog48/es-th-2-23.png" alt="img"></p>
+<ol>
+<li>客户端向 Node 1 发送 bulk 请求。</li>
+<li>Node 1 为每个节点创建一个批量请求，并将这些请求并行转发到每个包含主分片的节点主机。</li>
+<li>主分片一个接一个按顺序执行每个操作。当每个操作成功时，主分片并行转发新文档（或删除）到副本分片，然后执行下一个操作。 一旦所有的副本分片报告所有操作成功，该节点将向协调节点报告成功，协调节点将这些响应收集整理并返回给客户端。</li>
+</ol>
+<h2 id="文档索引过程详解"><a href="#文档索引过程详解" class="headerlink" title="文档索引过程详解"></a>文档索引过程详解</h2><h3 id="整体的索引流程"><a href="#整体的索引流程" class="headerlink" title="整体的索引流程"></a>整体的索引流程</h3><blockquote>
+<p>先看下整体的索引流程</p>
+</blockquote>
+<p><img src="/../imgs/blog48/es-th-2-5.jpeg" alt="img"></p>
+<ul>
+<li>协调节点默认使用文档ID参与计算（也支持通过routing），以便为路由提供合适的分片。</li>
+</ul>
+<pre><code class="bash">shard = hash(document_id) % (num_of_primary_shards)
+</code></pre>
+<ul>
+<li>当分片所在的节点接收到来自协调节点的请求后，会将请求写入到Memory Buffer，然后定时（默认是每隔1秒）写入到Filesystem Cache，这个从Momery Buffer到Filesystem Cache的过程就叫做refresh；</li>
+<li>当然在某些情况下，存在Momery Buffer和Filesystem Cache的数据可能会丢失，ES是通过translog的机制来保证数据的可靠性的。其实现机制是接收到请求后，同时也会写入到translog中，当Filesystem cache中的数据写入到磁盘中时，才会清除掉，这个过程叫做flush。</li>
+<li>在flush过程中，内存中的缓冲将被清除，内容被写入一个新段，段的fsync将创建一个新的提交点，并将内容刷新到磁盘，旧的translog将被删除并开始一个新的translog。 flush触发的时机是定时触发（默认30分钟）或者translog变得太大（默认为512M）时。</li>
+</ul>
+<h3 id="分步骤看数据持久化过程"><a href="#分步骤看数据持久化过程" class="headerlink" title="分步骤看数据持久化过程"></a>分步骤看数据持久化过程</h3><blockquote>
+<p><strong>通过分步骤看数据持久化过程</strong>：<strong>write -&gt; refresh -&gt; flush -&gt; merge</strong></p>
+</blockquote>
+<ul>
+<li><strong>write 过程</strong></li>
+</ul>
+<p><img src="/../imgs/blog48/es-th-2-6.png" alt="img"></p>
+<p>一个新文档过来，会存储在 in-memory buffer 内存缓存区中，顺便会记录 Translog（Elasticsearch 增加了一个 translog ，或者叫事务日志，在每一次对 Elasticsearch 进行操作时均进行了日志记录）。</p>
+<p>这时候数据还没到 segment ，是搜不到这个新文档的。数据只有被 refresh 后，才可以被搜索到。</p>
+<ul>
+<li><strong>refresh 过程</strong></li>
+</ul>
+<p><img src="/../imgs/blog48/es-th-2-7.png" alt="img"></p>
+<p>refresh 默认 1 秒钟，执行一次上图流程。ES 是支持修改这个值的，通过 index.refresh_interval 设置 refresh （冲刷）间隔时间。refresh 流程大致如下：</p>
+<ol>
+<li>in-memory buffer 中的文档写入到新的 segment 中，但 segment 是存储在文件系统的缓存中。此时文档可以被搜索到</li>
+<li>最后清空 in-memory buffer。注意: Translog 没有被清空，为了将 segment 数据写到磁盘</li>
+<li>文档经过 refresh 后， segment 暂时写到文件系统缓存，这样避免了性能 IO 操作，又可以使文档搜索到。refresh 默认 1 秒执行一次，性能损耗太大。一般建议稍微延长这个 refresh 时间间隔，比如 5 s。因此，ES 其实就是准实时，达不到真正的实时。</li>
+</ol>
+<ul>
+<li><strong>flush 过程</strong></li>
+</ul>
+<p>每隔一段时间—例如 translog 变得越来越大—索引被刷新（flush）；一个新的 translog 被创建，并且一个全量提交被执行</p>
+<p><img src="/../imgs/blog48/es-th-2-9.png" alt="img"></p>
+<p>上个过程中 segment 在文件系统缓存中，会有意外故障文档丢失。那么，为了保证文档不会丢失，需要将文档写入磁盘。那么文档从文件缓存写入磁盘的过程就是 flush。写入次怕后，清空 translog。具体过程如下：</p>
+<ol>
+<li>所有在内存缓冲区的文档都被写入一个新的段。</li>
+<li>缓冲区被清空。</li>
+<li>一个Commit Point被写入硬盘。</li>
+<li>文件系统缓存通过 fsync 被刷新（flush）。</li>
+<li>老的 translog 被删除。</li>
+</ol>
+<ul>
+<li><strong>merge 过程</strong></li>
+</ul>
+<p>由于自动刷新流程每秒会创建一个新的段 ，这样会导致短时间内的段数量暴增。而段数目太多会带来较大的麻烦。 每一个段都会消耗文件句柄、内存和cpu运行周期。更重要的是，每个搜索请求都必须轮流检查每个段；所以段越多，搜索也就越慢。</p>
+<p>Elasticsearch通过在后台进行Merge Segment来解决这个问题。小的段被合并到大的段，然后这些大的段再被合并到更大的段。</p>
+<p>当索引的时候，刷新（refresh）操作会创建新的段并将段打开以供搜索使用。合并进程选择一小部分大小相似的段，并且在后台将它们合并到更大的段中。这并不会中断索引和搜索。</p>
+<p><img src="/../imgs/blog48/es-th-2-10.png" alt="img"></p>
+<p>一旦合并结束，老的段被删除：</p>
+<ol>
+<li>新的段被刷新（flush）到了磁盘。 ** 写入一个包含新段且排除旧的和较小的段的新提交点。</li>
+<li>新的段被打开用来搜索。</li>
+<li>老的段被删除。</li>
+</ol>
+<p><img src="/../imgs/blog48/es-th-2-11.png" alt="img"></p>
+<p>合并大的段需要消耗大量的I&#x2F;O和CPU资源，如果任其发展会影响搜索性能。Elasticsearch在默认情况下会对合并流程进行资源限制，所以搜索仍然 有足够的资源很好地执行。</p>
+<h2 id="深入ElasticSearch索引文档的实现机制"><a href="#深入ElasticSearch索引文档的实现机制" class="headerlink" title="深入ElasticSearch索引文档的实现机制"></a>深入ElasticSearch索引文档的实现机制</h2><p>TIP</p>
+<p>作为选读内容。</p>
+<h3 id="写操作的关键点"><a href="#写操作的关键点" class="headerlink" title="写操作的关键点"></a>写操作的关键点</h3><p>在考虑或分析一个分布式系统的写操作时，一般需要从下面几个方面考虑：</p>
+<ul>
+<li>可靠性：或者是持久性，数据写入系统成功后，数据不会被回滚或丢失。</li>
+<li>一致性：数据写入成功后，再次查询时必须能保证读取到最新版本的数据，不能读取到旧数据。</li>
+<li>原子性：一个写入或者更新操作，要么完全成功，要么完全失败，不允许出现中间状态。</li>
+<li>隔离性：多个写入操作相互不影响。</li>
+<li>实时性：写入后是否可以立即被查询到。</li>
+<li>性能：写入性能，吞吐量到底怎么样。</li>
+</ul>
+<p>Elasticsearch作为分布式系统，也需要在写入的时候满足上述的四个特点，我们在后面的写流程介绍中会涉及到上述四个方面。</p>
+<p>接下来,我们一层一层剖析Elasticsearch内部的写机制。</p>
+<h3 id="Lucene的写"><a href="#Lucene的写" class="headerlink" title="Lucene的写"></a>Lucene的写</h3><p>众所周知，Elasticsearch内部使用了Lucene完成索引创建和搜索功能，Lucene中写操作主要是通过IndexWriter类实现，IndexWriter提供三个接口：</p>
+<pre><code class="java"> public long addDocument();
+ public long updateDocuments();
+ public long deleteDocuments();
+</code></pre>
+<p>通过这三个接口可以完成单个文档的写入，更新和删除功能，包括了分词，倒排创建，正排创建等等所有搜索相关的流程。只要Doc通过IndesWriter写入后，后面就可以通过IndexSearcher搜索了，看起来功能已经完善了，但是仍然有一些问题没有解：</p>
+<ul>
+<li>上述操作是单机的，而不是我们需要的分布式。</li>
+<li>文档写入Lucene后并不是立即可查询的，需要生成完整的Segment后才可被搜索，如何保证实时性？</li>
+<li>Lucene生成的Segment是在内存中，如果机器宕机或掉电后，内存中的Segment会丢失，如何保证数据可靠性 ？</li>
+<li>Lucene不支持部分文档更新，但是这又是一个强需求，如何支持部分更新？</li>
+</ul>
+<p>上述问题，在Lucene中是没有解决的，那么就需要Elasticsearch中解决上述问题。</p>
+<p>我们再来看Elasticsearch中的写机制。</p>
+<h3 id="Elasticsearch的写"><a href="#Elasticsearch的写" class="headerlink" title="Elasticsearch的写"></a>Elasticsearch的写</h3><p>Elasticsearch采用多Shard方式，通过配置routing规则将数据分成多个数据子集，每个数据子集提供独立的索引和搜索功能。当写入文档的时候，根据routing规则，将文档发送给特定Shard中建立索引。这样就能实现分布式了。</p>
+<p>此外，Elasticsearch整体架构上采用了一主多副的方式：</p>
+<p><img src="/../imgs/blog48/es-th-3-3.png" alt="img"></p>
+<p>每个Index由多个Shard组成，每个Shard有一个主节点和多个副本节点，副本个数可配。但每次写入的时候，写入请求会先根据_routing规则选择发给哪个Shard，Index Request中可以设置使用哪个Filed的值作为路由参数，如果没有设置，则使用Mapping中的配置，如果mapping中也没有配置，则使用_id作为路由参数，然后通过_routing的Hash值选择出Shard（在OperationRouting类中），最后从集群的Meta中找出出该Shard的Primary节点。</p>
+<p>请求接着会发送给Primary Shard，在Primary Shard上执行成功后，再从Primary Shard上将请求同时发送给多个Replica Shard，请求在多个Replica Shard上执行成功并返回给Primary Shard后，写入请求执行成功，返回结果给客户端。</p>
+<p>这种模式下，写入操作的延时就等于latency &#x3D; Latency(Primary Write) + Max(Replicas Write)。只要有副本在，写入延时最小也是两次单Shard的写入时延总和，写入效率会较低，但是这样的好处也很明显，避免写入后，单机或磁盘故障导致数据丢失，在数据重要性和性能方面，一般都是优先选择数据，除非一些允许丢数据的特殊场景。</p>
+<p>采用多个副本后，避免了单机或磁盘故障发生时，对已经持久化后的数据造成损害，但是Elasticsearch里为了减少磁盘IO保证读写性能，一般是每隔一段时间（比如5分钟）才会把Lucene的Segment写入磁盘持久化，对于写入内存，但还未Flush到磁盘的Lucene数据，如果发生机器宕机或者掉电，那么内存中的数据也会丢失，这时候如何保证？</p>
+<p>对于这种问题，Elasticsearch学习了数据库中的处理方式：增加CommitLog模块，Elasticsearch中叫TransLog。</p>
+<p><img src="/../imgs/blog48/es-th-3-4.jpeg" alt="img"></p>
+<p>在每一个Shard中，写入流程分为两部分，先写入Lucene，再写入TransLog。</p>
+<p>写入请求到达Shard后，先写Lucene文件，创建好索引，此时索引还在内存里面，接着去写TransLog，写完TransLog后，刷新TransLog数据到磁盘上，写磁盘成功后，请求返回给用户。这里有几个关键点:</p>
+<ul>
+<li>一是和数据库不同，数据库是先写CommitLog，然后再写内存，而Elasticsearch是先写内存，最后才写TransLog，一种可能的原因是Lucene的内存写入会有很复杂的逻辑，很容易失败，比如分词，字段长度超过限制等，比较重，为了避免TransLog中有大量无效记录，减少recover的复杂度和提高速度，所以就把写Lucene放在了最前面。</li>
+<li>二是写Lucene内存后，并不是可被搜索的，需要通过Refresh把内存的对象转成完整的Segment后，然后再次reopen后才能被搜索，一般这个时间设置为1秒钟，导致写入Elasticsearch的文档，最快要1秒钟才可被从搜索到，所以Elasticsearch在搜索方面是NRT（Near Real Time）近实时的系统。</li>
+<li>三是当Elasticsearch作为NoSQL数据库时，查询方式是GetById，这种查询可以直接从TransLog中查询，这时候就成了RT（Real Time）实时系统。四是每隔一段比较长的时间，比如30分钟后，Lucene会把内存中生成的新Segment刷新到磁盘上，刷新后索引文件已经持久化了，历史的TransLog就没用了，会清空掉旧的TransLog。</li>
+</ul>
+<p>上面介绍了Elasticsearch在写入时的两个关键模块，Replica和TransLog，接下来，我们看一下Update流程：</p>
+<p><img src="/../imgs/blog48/es-th-3-5.jpeg" alt="img"></p>
+<p>Lucene中不支持部分字段的Update，所以需要在Elasticsearch中实现该功能，具体流程如下：</p>
+<ul>
+<li>收到Update请求后，从Segment或者TransLog中读取同id的完整Doc，记录版本号为V1。</li>
+<li>将版本V1的全量Doc和请求中的部分字段Doc合并为一个完整的Doc，同时更新内存中的VersionMap。获取到完整Doc后，Update请求就变成了Index请求。 加锁。</li>
+<li>再次从versionMap中读取该id的最大版本号V2，如果versionMap中没有，则从Segment或者TransLog中读取，这里基本都会从versionMap中获取到。</li>
+<li>检查版本是否冲突(V1&#x3D;&#x3D;V2)，如果冲突，则回退到开始的“Update doc”阶段，重新执行。如果不冲突，则执行最新的Add请求。</li>
+<li>在Index Doc阶段，首先将Version + 1得到V3，再将Doc加入到Lucene中去，Lucene中会先删同id下的已存在doc id，然后再增加新Doc。写入Lucene成功后，将当前V3更新到versionMap中。</li>
+<li>释放锁，部分更新的流程就结束了。</li>
+</ul>
+<p>介绍完部分更新的流程后，大家应该从整体架构上对Elasticsearch的写入有了一个初步的映象，接下来我们详细剖析下写入的详细步骤。</p>
+<h3 id="Elasticsearch写入请求类型"><a href="#Elasticsearch写入请求类型" class="headerlink" title="Elasticsearch写入请求类型"></a>Elasticsearch写入请求类型</h3><blockquote>
+<p>Elasticsearch中的写入请求类型，主要包括下列几个：Index(Create)，Update，Delete和Bulk，其中前3个是单文档操作，后一个Bulk是多文档操作，其中Bulk中可以包括Index(Create)，Update和Delete。</p>
+</blockquote>
+<p>在6.0.0及其之后的版本中，前3个单文档操作的实现基本都和Bulk操作一致，甚至有些就是通过调用Bulk的接口实现的。估计接下来几个版本后，Index(Create)，Update，Delete都会被当做Bulk的一种特例化操作被处理。这样，代码和逻辑都会更清晰一些。</p>
+<p>下面，我们就以Bulk请求为例来介绍写入流程。</p>
+<p><img src="/../imgs/blog48/es-th-3-6.jpeg" alt="img"></p>
+<ul>
+<li>红色：Client Node。</li>
+<li>绿色：Primary Node。</li>
+<li>蓝色：Replica Node。</li>
+</ul>
+<h4 id="Client-Node"><a href="#Client-Node" class="headerlink" title="Client Node"></a>Client Node</h4><blockquote>
+<p>Client Node 也包括了前面说过的Parse Request，这里就不再赘述了，接下来看一下其他的部分。</p>
+</blockquote>
+<ol>
+<li><strong>Ingest Pipeline</strong></li>
+</ol>
+<p>在这一步可以对原始文档做一些处理，比如HTML解析，自定义的处理，具体处理逻辑可以通过插件来实现。在Elasticsearch中，由于Ingest Pipeline会比较耗费CPU等资源，可以设置专门的Ingest Node，专门用来处理Ingest Pipeline逻辑。</p>
+<p>如果当前Node不能执行Ingest Pipeline，则会将请求发给另一台可以执行Ingest Pipeline的Node。</p>
+<ol>
+<li><strong>Auto Create Index</strong></li>
+</ol>
+<p>判断当前Index是否存在，如果不存在，则需要自动创建Index，这里需要和Master交互。也可以通过配置关闭自动创建Index的功能。</p>
+<ol>
+<li><strong>Set Routing</strong></li>
+</ol>
+<p>设置路由条件，如果Request中指定了路由条件，则直接使用Request中的Routing，否则使用Mapping中配置的，如果Mapping中无配置，则使用默认的_id字段值。</p>
+<p>在这一步中，如果没有指定id字段，则会自动生成一个唯一的_id字段，目前使用的是UUID。</p>
+<ol>
+<li><strong>Construct BulkShardRequest</strong></li>
+</ol>
+<p>由于Bulk Request中会包括多个(Index&#x2F;Update&#x2F;Delete)请求，这些请求根据routing可能会落在多个Shard上执行，这一步会按Shard挑拣Single Write Request，同一个Shard中的请求聚集在一起，构建BulkShardRequest，每个BulkShardRequest对应一个Shard。</p>
+<ol>
+<li><strong>Send Request To Primary</strong></li>
+</ol>
+<p>这一步会将每一个BulkShardRequest请求发送给相应Shard的Primary Node。</p>
+<h4 id="Primary-Node"><a href="#Primary-Node" class="headerlink" title="Primary Node"></a>Primary Node</h4><blockquote>
+<p>Primary 请求的入口是在PrimaryOperationTransportHandler的messageReceived，我们来看一下相关的逻辑流程。</p>
+</blockquote>
+<ol>
+<li><strong>Index or Update or Delete</strong></li>
+</ol>
+<p>循环执行每个Single Write Request，对于每个Request，根据操作类型(CREATE&#x2F;INDEX&#x2F;UPDATE&#x2F;DELETE)选择不同的处理逻辑。</p>
+<p>其中，Create&#x2F;Index是直接新增Doc，Delete是直接根据_id删除Doc，Update会稍微复杂些，我们下面就以Update为例来介绍。</p>
+<ol>
+<li><strong>Translate Update To Index or Delete</strong></li>
+</ol>
+<p>这一步是Update操作的特有步骤，在这里，会将Update请求转换为Index或者Delete请求。首先，会通过GetRequest查询到已经存在的同_id Doc（如果有）的完整字段和值（依赖_source字段），然后和请求中的Doc合并。同时，这里会获取到读到的Doc版本号，记做V1。</p>
+<ol>
+<li><strong>Parse Doc</strong></li>
+</ol>
+<p>这里会解析Doc中各个字段。生成ParsedDocument对象，同时会生成uid Term。在Elasticsearch中，_uid &#x3D; type # _id，对用户，_Id可见，而Elasticsearch中存储的是_uid。这一部分生成的ParsedDocument中也有Elasticsearch的系统字段，大部分会根据当前内容填充，部分未知的会在后面继续填充ParsedDocument。</p>
+<ol>
+<li><strong>Update Mapping</strong></li>
+</ol>
+<p>Elasticsearch中有个自动更新Mapping的功能，就在这一步生效。会先挑选出Mapping中未包含的新Field，然后判断是否运行自动更新Mapping，如果允许，则更新Mapping。</p>
+<ol>
+<li><strong>Get Sequence Id and Version</strong></li>
+</ol>
+<p>由于当前是Primary Shard，则会从SequenceNumber Service获取一个sequenceID和Version。SequenceID在Shard级别每次递增1，SequenceID在写入Doc成功后，会用来初始化LocalCheckpoint。Version则是根据当前Doc的最大Version递增1。</p>
+<ol>
+<li><strong>Add Doc To Lucene</strong></li>
+</ol>
+<p>这一步开始的时候会给特定_uid加锁，然后判断该_uid对应的Version是否等于之前Translate Update To Index步骤里获取到的Version，如果不相等，则说明刚才读取Doc后，该Doc发生了变化，出现了版本冲突，这时候会抛出一个VersionConflict的异常，该异常会在Primary Node最开始处捕获，重新从“Translate Update To Index or Delete”开始执行。</p>
+<p>如果Version相等，则继续执行，如果已经存在同id的Doc，则会调用Lucene的UpdateDocument(uid, doc)接口，先根据uid删除Doc，然后再Index新Doc。如果是首次写入，则直接调用Lucene的AddDocument接口完成Doc的Index，AddDocument也是通过UpdateDocument实现。</p>
+<p>这一步中有个问题是，如何保证Delete-Then-Add的原子性，怎么避免中间状态时被Refresh？答案是在开始Delete之前，会加一个Refresh Lock，禁止被Refresh，只有等Add完后释放了Refresh Lock后才能被Refresh，这样就保证了Delete-Then-Add的原子性。</p>
+<p>Lucene的UpdateDocument接口中就只是处理多个Field，会遍历每个Field逐个处理，处理顺序是invert index，store field，doc values，point dimension，后续会有文章专门介绍Lucene中的写入。</p>
+<ol>
+<li><strong>Write Translog</strong></li>
+</ol>
+<p>写完Lucene的Segment后，会以keyvalue的形式写TransLog，Key是_id，Value是Doc内容。当查询的时候，如果请求是GetDocByID，则可以直接根据_id从TransLog中读取到，满足NoSQL场景下的实时性要去。</p>
+<p>需要注意的是，这里只是写入到内存的TransLog，是否Sync到磁盘的逻辑还在后面。</p>
+<p>这一步的最后，会标记当前SequenceID已经成功执行，接着会更新当前Shard的LocalCheckPoint。</p>
+<ol>
+<li><strong>Renew Bulk Request</strong></li>
+</ol>
+<p>这里会重新构造Bulk Request，原因是前面已经将UpdateRequest翻译成了Index或Delete请求，则后续所有Replica中只需要执行Index或Delete请求就可以了，不需要再执行Update逻辑，一是保证Replica中逻辑更简单，性能更好，二是保证同一个请求在Primary和Replica中的执行结果一样。</p>
+<ol>
+<li><strong>Flush Translog</strong></li>
+</ol>
+<p>这里会根据TransLog的策略，选择不同的执行方式，要么是立即Flush到磁盘，要么是等到以后再Flush。Flush的频率越高，可靠性越高，对写入性能影响越大。</p>
+<ol>
+<li><strong>Send Requests To Replicas</strong></li>
+</ol>
+<p>这里会将刚才构造的新的Bulk Request并行发送给多个Replica，然后等待Replica的返回，这里需要等待所有Replica返回后（可能有成功，也有可能失败），Primary Node才会返回用户。如果某个Replica失败了，则Primary会给Master发送一个Remove Shard请求，要求Master将该Replica Shard从可用节点中移除。</p>
+<p>这里，同时会将SequenceID，PrimaryTerm，GlobalCheckPoint等传递给Replica。</p>
+<p>发送给Replica的请求中，Action Name等于原始ActionName + [R]，这里的R表示Replica。通过这个[R]的不同，可以找到处理Replica请求的Handler。</p>
+<ol>
+<li><strong>Receive Response From Replicas</strong></li>
+</ol>
+<p>Replica中请求都处理完后，会更新Primary Node的LocalCheckPoint。</p>
+<h4 id="Replica-Node"><a href="#Replica-Node" class="headerlink" title="Replica Node"></a>Replica Node</h4><blockquote>
+<p>Replica 请求的入口是在ReplicaOperationTransportHandler的messageReceived，我们来看一下相关的逻辑流程。</p>
+</blockquote>
+<ol>
+<li><strong>Index or Delete</strong></li>
+</ol>
+<p>根据请求类型是Index还是Delete，选择不同的执行逻辑。这里没有Update，是因为在Primary Node中已经将Update转换成了Index或Delete请求了。</p>
+<ol>
+<li><strong>Parse Doc</strong></li>
+<li><strong>Update Mapping</strong></li>
+</ol>
+<p>以上都和Primary Node中逻辑一致。</p>
+<ol>
+<li><strong>Get Sequence Id and Version</strong></li>
+</ol>
+<p>Primary Node中会生成Sequence ID和Version，然后放入ReplicaRequest中，这里只需要从Request中获取到就行。</p>
+<ol>
+<li><strong>Add Doc To Lucene</strong></li>
+</ol>
+<p>由于已经在Primary Node中将部分Update请求转换成了Index或Delete请求，这里只需要处理Index和Delete两种请求，不再需要处理Update请求了。比Primary Node会更简单一些。</p>
+<ol>
+<li><strong>Write Translog</strong></li>
+<li><strong>Flush Translog</strong></li>
+</ol>
+<p>以上都和Primary Node中逻辑一致。</p>
+<h3 id="最后"><a href="#最后" class="headerlink" title="最后"></a>最后</h3><p>上面详细介绍了Elasticsearch的写入流程及其各个流程的工作机制，我们在这里再次总结下之前提出的分布式系统中的六大特性：</p>
+<ul>
+<li>可靠性：由于Lucene的设计中不考虑可靠性，在Elasticsearch中通过Replica和TransLog两套机制保证数据的可靠性。</li>
+<li>一致性：Lucene中的Flush锁只保证Update接口里面Delete和Add中间不会Flush，但是Add完成后仍然有可能立即发生Flush，导致Segment可读。这样就没法保证Primary和所有其他Replica可以同一时间Flush，就会出现查询不稳定的情况，这里只能实现最终一致性。</li>
+<li>原子性：Add和Delete都是直接调用Lucene的接口，是原子的。当部分更新时，使用Version和锁保证更新是原子的。</li>
+<li>隔离性：仍然采用Version和局部锁来保证更新的是特定版本的数据。</li>
+<li>实时性：使用定期Refresh Segment到内存，并且Reopen Segment方式保证搜索可以在较短时间（比如1秒）内被搜索到。通过将未刷新到磁盘数据记入TransLog，保证对未提交数据可以通过ID实时访问到。</li>
+<li>性能：性能是一个系统性工程，所有环节都要考虑对性能的影响，在Elasticsearch中，在很多地方的设计都考虑到了性能，一是不需要所有Replica都返回后才能返回给用户，只需要返回特定数目的就行；二是生成的Segment现在内存中提供服务，等一段时间后才刷新到磁盘，Segment在内存这段时间的可靠性由TransLog保证；三是TransLog可以配置为周期性的Flush，但这个会给可靠性带来伤害；四是每个线程持有一个Segment，多线程时相互不影响，相互独立，性能更好；五是系统的写入流程对版本依赖较重，读取频率较高，因此采用了versionMap，减少热点数据的多次磁盘IO开销。Lucene中针对性能做了大量的优化。</li>
+</ul>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="http://example.com">Mercury</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="http://example.com/2024/02/20/blog48/">http://example.com/2024/02/20/blog48/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="http://example.com" target="_blank">Mercury个人博客</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/ElasticSearch/">ElasticSearch</a></div><div class="post_share"><div class="social-share" data-image="/img/avatar.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2024/02/27/blog49/" title="ElasticSearch性能优化"><div class="cover" style="background: var(--default-bg-color)"></div><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">ElasticSearch性能优化</div></div></a></div><div class="next-post pull-right"><a href="/2024/01/27/blog47/" title="Redis 性能优化方案"><div class="cover" style="background: var(--default-bg-color)"></div><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">Redis 性能优化方案</div></div></a></div></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><div><a href="/2023/11/01/blog12/" title="ElasticSearch面试题"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2023-11-01</div><div class="title">ElasticSearch面试题</div></div></a></div><div><a href="/2023/12/09/blog34/" title="使用canal实现MySQL和ES数据同步"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2023-12-09</div><div class="title">使用canal实现MySQL和ES数据同步</div></div></a></div><div><a href="/2023/11/06/blog11/" title="ElasticSearch分片集群"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2023-11-06</div><div class="title">ElasticSearch分片集群</div></div></a></div><div><a href="/2024/02/27/blog49/" title="ElasticSearch性能优化"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2024-02-27</div><div class="title">ElasticSearch性能优化</div></div></a></div><div><a href="/2023/10/06/blog33/" title="ES数据聚合+自动补全查询+数据同步+集群"><div class="cover" style="background: var(--default-bg-color)"></div><div class="content is-center"><div class="date"><i class="far fa-calendar-alt fa-fw"></i> 2023-10-06</div><div class="title">ES数据聚合+自动补全查询+数据同步+集群</div></div></a></div></div></div><hr/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div id="lv-container" data-id="city" data-uid="MTAyMC81ODUzMS8zNDk5NA=="></div></div></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info"><div class="is-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info__name">Mercury</div><div class="author-info__description">与谁同坐。明月清风我</div></div><div class="card-info-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">49</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">13</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">2</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/Mercury4915"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">java学习日记，不定时更新</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%87%E6%A1%A3%E7%B4%A2%E5%BC%95%E6%AD%A5%E9%AA%A4%E9%A1%BA%E5%BA%8F"><span class="toc-number">1.</span> <span class="toc-text">文档索引步骤顺序</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%95%E4%B8%AA%E6%96%87%E6%A1%A3"><span class="toc-number">1.1.</span> <span class="toc-text">单个文档</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A4%9A%E4%B8%AA%E6%96%87%E6%A1%A3"><span class="toc-number">1.2.</span> <span class="toc-text">多个文档</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%87%E6%A1%A3%E7%B4%A2%E5%BC%95%E8%BF%87%E7%A8%8B%E8%AF%A6%E8%A7%A3"><span class="toc-number">2.</span> <span class="toc-text">文档索引过程详解</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%95%B4%E4%BD%93%E7%9A%84%E7%B4%A2%E5%BC%95%E6%B5%81%E7%A8%8B"><span class="toc-number">2.1.</span> <span class="toc-text">整体的索引流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%88%86%E6%AD%A5%E9%AA%A4%E7%9C%8B%E6%95%B0%E6%8D%AE%E6%8C%81%E4%B9%85%E5%8C%96%E8%BF%87%E7%A8%8B"><span class="toc-number">2.2.</span> <span class="toc-text">分步骤看数据持久化过程</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%B7%B1%E5%85%A5ElasticSearch%E7%B4%A2%E5%BC%95%E6%96%87%E6%A1%A3%E7%9A%84%E5%AE%9E%E7%8E%B0%E6%9C%BA%E5%88%B6"><span class="toc-number">3.</span> <span class="toc-text">深入ElasticSearch索引文档的实现机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%99%E6%93%8D%E4%BD%9C%E7%9A%84%E5%85%B3%E9%94%AE%E7%82%B9"><span class="toc-number">3.1.</span> <span class="toc-text">写操作的关键点</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Lucene%E7%9A%84%E5%86%99"><span class="toc-number">3.2.</span> <span class="toc-text">Lucene的写</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Elasticsearch%E7%9A%84%E5%86%99"><span class="toc-number">3.3.</span> <span class="toc-text">Elasticsearch的写</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Elasticsearch%E5%86%99%E5%85%A5%E8%AF%B7%E6%B1%82%E7%B1%BB%E5%9E%8B"><span class="toc-number">3.4.</span> <span class="toc-text">Elasticsearch写入请求类型</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Client-Node"><span class="toc-number">3.4.1.</span> <span class="toc-text">Client Node</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Primary-Node"><span class="toc-number">3.4.2.</span> <span class="toc-text">Primary Node</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Replica-Node"><span class="toc-number">3.4.3.</span> <span class="toc-text">Replica Node</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%9C%80%E5%90%8E"><span class="toc-number">3.5.</span> <span class="toc-text">最后</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2024/02/27/blog49/" title="ElasticSearch性能优化">ElasticSearch性能优化</a><time datetime="2024-02-27T02:18:00.000Z" title="发表于 2024-02-27 10:18:00">2024-02-27</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2024/02/20/blog48/" title="ES索引文档流程详解">ES索引文档流程详解</a><time datetime="2024-02-20T09:15:44.000Z" title="发表于 2024-02-20 17:15:44">2024-02-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2024/01/27/blog47/" title="Redis 性能优化方案">Redis 性能优化方案</a><time datetime="2024-01-27T07:03:34.000Z" title="发表于 2024-01-27 15:03:34">2024-01-27</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2024/01/21/blog46/" title="布隆过滤器安装与使用及原理">布隆过滤器安装与使用及原理</a><time datetime="2024-01-21T02:03:34.000Z" title="发表于 2024-01-21 10:03:34">2024-01-21</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/2024/01/15/blog45/" title="普通索引和唯一索引，应该怎么选择？">普通索引和唯一索引，应该怎么选择？</a><time datetime="2024-01-15T11:35:35.000Z" title="发表于 2024-01-15 19:35:35">2024-01-15</time></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2024 By Mercury</div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><a id="to_comment" href="#post-comment" title="直达评论"><i class="fas fa-comments"></i></a><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/@fancyapps/ui/dist/fancybox/fancybox.umd.min.js"></script><div class="js-pjax"><script>function loadLivere () {
+  if (typeof LivereTower === 'object') {
+    window.LivereTower.init()
+  }
+  else {
+    (function(d, s) {
+        var j, e = d.getElementsByTagName(s)[0];
+        if (typeof LivereTower === 'function') { return; }
+        j = d.createElement(s);
+        j.src = 'https://cdn-city.livere.com/js/embed.dist.js';
+        j.async = true;
+        e.parentNode.insertBefore(j, e);
+    })(document, 'script');
+  }
+}
+
+if ('Livere' === 'Livere' || !true) {
+  if (true) btf.loadComment(document.getElementById('lv-container'), loadLivere)
+  else loadLivere()
+}
+else {
+  function loadOtherComment () {
+    loadLivere()
+  }
+}</script></div><script defer="defer" id="fluttering_ribbon" mobile="true" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/dist/canvas-fluttering-ribbon.min.js"></script><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><div id="local-search"><div class="search-dialog"><nav class="search-nav"><span class="search-dialog-title">搜索</span><span id="loading-status"></span><button class="search-close-button"><i class="fas fa-times"></i></button></nav><div class="is-center" id="loading-database"><i class="fas fa-spinner fa-pulse"></i><span>  数据库加载中</span></div><div class="search-wrap"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章" type="text"/></div></div><hr/><div class="no-result" id="local-search-results"></div><div id="local-search-stats-wrap"></div></div></div><div id="search-mask"></div><script src="/js/search/local-search.js"></script></div></div></body></html>
