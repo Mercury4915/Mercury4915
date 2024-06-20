@@ -4,6 +4,81 @@
   
     
     <entry>
+      <title>redis主从同步</title>
+      <link href="/2024/04/02/blog6/"/>
+      <url>/2024/04/02/blog6/</url>
+      
+        <content type="html"><![CDATA[<h1 id="Redis主从同步"><a href="#Redis主从同步" class="headerlink" title="Redis主从同步"></a>Redis主从同步</h1><h3 id="全量同步"><a href="#全量同步" class="headerlink" title="全量同步"></a>全量同步</h3><p>主从第一次建立连接时，会执行<strong>全量同步</strong>，将master节点的所有数据都拷贝给slave节点，流程：</p><p><img src="/../imgs/blog6/image-20210725152222497.png" alt="image-20210725152222497"></p><p>这里有一个问题，master如何得知salve是第一次来连接呢？？</p><p>有几个概念，可以作为判断依据：</p><ul><li><strong>Replication Id</strong>：简称replid，是数据集的标记，id一致则说明是同一数据集。每一个master都有唯一的replid，slave则会继承master节点的replid</li><li><strong>offset</strong>：偏移量，随着记录在repl_baklog中的数据增多而逐渐增大。slave完成同步时也会记录当前同步的offset。如果slave的offset小于master的offset，说明slave数据落后于master，需要更新。</li></ul><p>因此slave做数据同步，必须向master声明自己的replication id 和offset，master才可以判断到底需要同步哪些数据。</p><p>因为slave原本也是一个master，有自己的replid和offset，当第一次变成slave，与master建立连接时，发送的replid和offset是自己的replid和offset。</p><p>master判断发现slave发送来的replid与自己的不一致，说明这是一个全新的slave，就知道要做全量同步了。</p><p>master会将自己的replid和offset都发送给这个slave，slave保存这些信息。以后slave的replid就与master一致了。</p><p>因此，<strong>master判断一个节点是否是第一次同步的依据，就是看replid是否一致</strong>。</p><p>如图：</p><p><img src="/../imgs/blog6/image-20210725152700914.png" alt="image-20210725152700914"></p><p>完整流程描述：</p><ul><li>slave节点请求增量同步</li><li>master节点判断replid，发现不一致，拒绝增量同步</li><li>master将完整内存数据生成RDB，发送RDB到slave</li><li>slave清空本地数据，加载master的RDB</li><li>master将RDB期间的命令记录在repl_baklog，并持续将log中的命令发送给slave</li><li>slave执行接收到的命令，保持与master之间的同步</li></ul><h3 id="2-2-2-增量同步"><a href="#2-2-2-增量同步" class="headerlink" title="2.2.2.增量同步"></a>2.2.2.增量同步</h3><p>全量同步需要先做RDB，然后将RDB文件通过网络传输个slave，成本太高了。因此除了第一次做全量同步，其它大多数时候slave与master都是做<strong>增量同步</strong>。</p><p>什么是增量同步？就是只更新slave与master存在差异的部分数据。如图：</p><p><img src="/../imgs/blog6/image-20210725153201086.png" alt="image-20210725153201086"></p><p>那么master怎么知道slave与自己的数据差异在哪里呢?</p><h3 id="repl-backlog原理"><a href="#repl-backlog原理" class="headerlink" title="repl_backlog原理"></a>repl_backlog原理</h3><p>master怎么知道slave与自己的数据差异在哪里呢?</p><p>这就要说到全量同步时的repl_baklog文件了。</p><p>这个文件是一个固定大小的数组，只不过数组是环形，也就是说<strong>角标到达数组末尾后，会再次从0开始读写</strong>，这样数组头部的数据就会被覆盖。</p><p>repl_baklog中会记录Redis处理过的命令日志及offset，包括master当前的offset，和slave已经拷贝到的offset：</p><p><img src="/../imgs/blog6/image-20210725153359022.png" alt="image-20210725153359022"> </p><p>slave与master的offset之间的差异，就是salve需要增量拷贝的数据了。</p><p>随着不断有数据写入，master的offset逐渐变大，slave也不断的拷贝，追赶master的offset：</p><p><img src="/../imgs/blog6/image-20210725153524190.png" alt="image-20210725153524190"> </p><p>直到数组被填满：</p><p><img src="/../imgs/blog6/image-20210725153715910.png" alt="image-20210725153715910"> </p><p>此时，如果有新的数据写入，就会覆盖数组中的旧数据。不过，旧的数据只要是绿色的，说明是已经被同步到slave的数据，即便被覆盖了也没什么影响。因为未同步的仅仅是红色部分。</p><p>但是，如果slave出现网络阻塞，导致master的offset远远超过了slave的offset： </p><p><img src="/../imgs/blog6/image-20210725153937031.png" alt="image-20210725153937031"> </p><p>如果master继续写入新数据，其offset就会覆盖旧的数据，直到将slave现在的offset也覆盖：</p><p><img src="/../imgs/blog6/image-20210725154155984.png" alt="image-20210725154155984"> </p><p>棕色框中的红色部分，就是尚未同步，但是却已经被覆盖的数据。此时如果slave恢复，需要同步，却发现自己的offset都没有了，无法完成增量同步了。只能做全量同步。</p><p><img src="/../imgs/blog6/image-20210725154216392.png" alt="image-20210725154216392"></p><h3 id="主从同步优化"><a href="#主从同步优化" class="headerlink" title="主从同步优化"></a>主从同步优化</h3><p>主从同步可以保证主从数据的一致性，非常重要。</p><p>可以从以下几个方面来优化Redis主从就集群：</p><ul><li>在master中配置repl-diskless-sync yes启用无磁盘复制，避免全量同步时的磁盘IO。</li><li>Redis单节点上的内存占用不要太大，减少RDB导致的过多磁盘IO</li><li>适当提高repl_baklog的大小，发现slave宕机时尽快实现故障恢复，尽可能避免全量同步</li><li>限制一个master上的slave节点数量，如果实在是太多slave，则可以采用主-从-从链式结构，减少master压力</li></ul><p>主从从架构图：</p><p><img src="/../imgs/blog6/image-20210725154405899.png" alt="image-20210725154405899"></p><h3 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h3><p>简述全量同步和增量同步区别？</p><ul><li>全量同步：master将完整内存数据生成RDB，发送RDB到slave。后续命令则记录在repl_baklog，逐个发送给slave。</li><li>增量同步：slave提交自己的offset到master，master获取repl_baklog中从offset之后的命令给slave</li></ul><p>什么时候执行全量同步？</p><ul><li>slave节点第一次连接master节点时</li><li>slave节点断开时间太久，repl_baklog中的offset已经被覆盖时</li></ul><p>什么时候执行增量同步？</p><ul><li>slave节点断开又恢复，并且在repl_baklog中能找到offset时</li></ul><p>转载自：黑马程序员Redis教程（【黑马程序员Redis入门到实战教程，深度透析redis底层原理+redis分布式锁+企业解决方案+黑马点评实战项目】 <a href="https://www.bilibili.com/video/BV1cr4y1671t/?share_source=copy_web%EF%BC%89">https://www.bilibili.com/video/BV1cr4y1671t/?share_source=copy_web）</a></p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 学习笔记 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> redis </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>Redis持久化</title>
+      <link href="/2024/03/02/blog1/"/>
+      <url>/2024/03/02/blog1/</url>
+      
+        <content type="html"><![CDATA[<h1 id="1-Redis持久化"><a href="#1-Redis持久化" class="headerlink" title="1.Redis持久化"></a>1.Redis持久化</h1><p>Redis有两种持久化方案：</p><ul><li>RDB持久化</li><li>AOF持久化</li></ul><h2 id="1-1-RDB"><a href="#1-1-RDB" class="headerlink" title="1.1.RDB"></a>1.1.RDB</h2><p>RDB全称Redis Database Backup file（Redis数据备份文件），RDB其实就是把数据以快照的形式保存在磁盘上。什么是快照呢，你可以理解成把当前时刻的数据拍成一张照片保存下来。</p><p>RDB持久化是指在指定的时间间隔内将内存中的数据集快照写入磁盘。也是默认的持久化方式，这种方式是就是将内存中数据以快照的方式写入到二进制文件中，默认的文件名为dump.rdb。</p><h3 id="1-1-1-RDB执行"><a href="#1-1-1-RDB执行" class="headerlink" title="1.1.1.RDB执行"></a>1.1.1.RDB执行</h3><p>RDB持久化在四种情况下会执行：</p><ul><li>执行save命令</li><li>执行bgsave命令</li><li>Redis停机时</li><li>触发RDB条件时</li></ul><p><strong>1）save命令</strong></p><p>save命令会导致主进程执行RDB，这个过程中其它所有命令都会被阻塞。</p><p><strong>2）bgsave命令</strong></p><p>bgsave命令执行后Redis执行fork操作创建子进程完成RDB，主进程可以继续处理用户请求，不会阻塞。</p><p><strong>3）停机时</strong></p><p>Redis停机时会执行一次save命令，实现RDB持久化。</p><p><strong>4）触发RDB条件</strong></p><p>Redis内部有触发RDB的机制，可以在redis.conf文件中找到，格式如下：</p><pre><code class="properties"># 下面的配置代表600秒内如果至少有10个key被修改，则执行bgsavesave 600 10  </code></pre><p>RDB的其它配置也可以在redis.conf文件中设置：</p><pre><code class="properties"># 是否进行压缩（会耗费cpu资源）rdbcompression yes# RDB文件保存名称（默认为dump.rdb）dbfilename dump.rdb  </code></pre><h3 id="1-1-2-RDB原理"><a href="#1-1-2-RDB原理" class="headerlink" title="1.1.2.RDB原理"></a>1.1.2.RDB原理</h3><p>bgsave开始时会fork主进程得到子进程，子进程共享主进程的内存数据。完成fork后读取内存数据并写入 RDB 文件。</p><p>fork采用的是copy-on-write技术：</p><ul><li>当主进程执行读操作时，访问共享内存；</li><li>当主进程执行写操作时，则会拷贝一份数据，执行写操作。</li></ul><p><img src="/imgs/blog1/image-20210725151319695-16855170885551.png"></p><h2 id="1-2-AOF"><a href="#1-2-AOF" class="headerlink" title="1.2.AOF"></a>1.2.AOF</h2><h3 id="1-2-1-AOF原理"><a href="#1-2-1-AOF原理" class="headerlink" title="1.2.1.AOF原理"></a>1.2.1.AOF原理</h3><p>AOF全称为Append Only File（追加文件）。Redis处理的每一个写命令都会记录在AOF文件，可以看做是命令日志文件。</p><h3 id="1-2-2-AOF配置"><a href="#1-2-2-AOF配置" class="headerlink" title="1.2.2.AOF配置"></a>1.2.2.AOF配置</h3><p>AOF默认是关闭的，需要修改redis.conf配置文件来开启AOF：</p><pre><code class="properties"># 是否开启AOF功能，默认是noappendonly yes</code></pre><p>AOF的命令记录的频率也可以通过redis.conf文件来配：</p><pre><code class="properties"># 每执行一次写命令，立即记录appendfsync always # 每隔1秒将缓冲区数据写到AOF文件（默认）appendfsync everysec # 由操作系统决定何时将缓冲区内容写回磁盘appendfsync no</code></pre><p>三种策略对比：</p><p><img src="/imgs/blog1/image-20210725151654046-16855171063852.png"></p><h3 id="1-2-3-AOF文件重写"><a href="#1-2-3-AOF文件重写" class="headerlink" title="1.2.3.AOF文件重写"></a>1.2.3.AOF文件重写</h3><p>AOF的方式也同时带来了另一个问题。持久化文件会变的越来越大。为了压缩aof的持久化文件。redis提供了bgrewriteaof命令。将内存中的数据以命令的方式保存到临时文件中，同时会fork出一条新进程来将文件重写。</p><p>Redis也会在触发阈值时自动去重写AOF文件。阈值也可以在redis.conf中配置：</p><pre><code class="properties"># AOF文件相比上次增长超过多少百分比则触发bgrewriteaofauto-aof-rewrite-percentage 100# AOF文件达到一定大小触发bgrewriteaofauto-aof-rewrite-min-size 64mb </code></pre><p>重写aof文件的操作，并没有读取旧的aof文件，而是将整个内存中的数据库内容用命令的方式重写了一个新的aof文件，这点和快照有点类似。</p><h2 id="1-3-RDB与AOF对比"><a href="#1-3-RDB与AOF对比" class="headerlink" title="1.3.RDB与AOF对比"></a>1.3.RDB与AOF对比</h2><p>RDB和AOF各有优缺点，在实际开发中一般会<strong>结合</strong>两者来使用。</p><p><img src="/imgs/blog1/image-20210725151940515-16855171206073.png"></p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 学习笔记 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> redis </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>为什么Redis集群分片最大槽数是16384个</title>
+      <link href="/2024/03/01/blog4/"/>
+      <url>/2024/03/01/blog4/</url>
+      
+        <content type="html"><![CDATA[<h4 id="为什么Redis集群分片最大槽数是16384个？"><a href="#为什么Redis集群分片最大槽数是16384个？" class="headerlink" title="为什么Redis集群分片最大槽数是16384个？"></a>为什么Redis集群分片最大槽数是16384个？</h4><p>​GitHub上已有关于这个问题的解答，<a href="https://github.com/redis/redis/issues/2576">why redis-cluster use 16384 slots? · Issue #2576 · redis&#x2F;redis (github.com)</a>，这里只做大概解释</p><p>​Redis集群通过CRC16算法对key进行哈希并对16384取模来决定该key具体放在哪个槽位，而该算法的hash结果有16位，也就是65536个值，那为啥不分配65536个槽而是16384（2^14）个？</p><p>​首先翻译一下作者的解答：</p><p>​正常的心跳数据包带有节点的完整配置，可以用幂等方式用旧的节点替换旧节点，以便更新旧的配置。这意味着它们包含原始节点的插槽配置，该节点使用2k的空间和16k的插槽，但是会使用8k的空间(使用65K的插槽)。同时，由于其他设计折衷，Redis集群不太可能扩展到1000个以上的主节点。因此16k处于正确的范围内，以确保每个主机具有足够的插槽，最多可容纳1000个矩阵，但数量足够少，可以轻松地将插槽配置作为原始位图传播。请注意，在小型群集中，位图将难以压缩，因为当N较小时，位图将设置的slot &#x2F; N位占设置位的很大百分比。</p><p>​翻译了又好像没翻译，还是没看懂，，，</p><p>​其实总结起来就是以下三个因素的考虑。</p><p>（1）如果槽位个数为65536，发送的心跳信息头达到8k，发送的心跳包过大。</p><p><img src="/imgs/blog4/image-20230601095147944.png"></p><p>上图即为Redis节点发送的信息头结构，其中占据最大空间的就是myslots[CLUSTER_SLOTS&#x2F;8]。如果槽位为65536个，大小为65536 &#x2F; 8 &#x2F; 1024 &#x3D; 8 kb。如果槽位为16384个，大小为16384 &#x2F; 8 &#x2F; 1024 &#x3D; 2 kb。在Redis集群中，Redis节点需要发送一定数量的ping消息作为心跳包，如果槽位为65536个，发送的消息头太大，浪费带宽。</p><p>（2）Redis的集群主节点数量基本不可能超过1000个，16384个槽位已经够用<br>集群节点越多，心跳包的消息体内携带的数据越多。如果节点超过1000个，也会导致网络拥堵。因此Redis作者不建议Redis cluster节点数量超过1000个。 那么，对于节点数在1000以内的redis cluster集群，16384个槽位够用了。没有必要拓展到65536个。</p><p>（3）节点一定的情况下，槽位越少，压缩比越高，容易传输<br>Redis主节点的配置信息中它所负责的哈希槽是通过一张bitmap的形式来保存的，在传输过程中会对bitmap进行压缩，但是如果bitmap的填充率slots &#x2F;N很高的话(N表示节点数)，bitmap的压缩率就很低。也就是说当节点数一定时，哈希槽数量很多的话，bitmap的压缩率就很低，不易传输。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 学习笔记 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> redis </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>ElasticSearch性能优化</title>
       <link href="/2024/02/27/blog49/"/>
       <url>/2024/02/27/blog49/</url>
@@ -54,6 +129,31 @@
     
     
     <entry>
+      <title>MySQL索引失效情况</title>
+      <link href="/2024/01/31/blog2/"/>
+      <url>/2024/01/31/blog2/</url>
+      
+        <content type="html"><![CDATA[<h1 id="MySQL索引失效"><a href="#MySQL索引失效" class="headerlink" title="MySQL索引失效"></a>MySQL索引失效</h1><p>​简单介绍下几种MySQL索引失效的常见情况。</p><h3 id="1-数据准备"><a href="#1-数据准备" class="headerlink" title="1.数据准备"></a>1.数据准备</h3><p>​首先准备一张数据表user_info并建立索引</p><pre><code class="mysql">`CREATE TABLE `user_info` ( `id` int(8) unsigned NOT NULL AUTO_INCREMENT COMMENT &#39;ID&#39;, `number` varchar(12) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT &#39;编号&#39;, `username` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT &#39;用户名&#39;, `age` int(11) DEFAULT NULL COMMENT &#39;年龄&#39;, `birthday` datetime DEFAULT CURRENT_TIMESTAMP COMMENT &#39;生日&#39;, PRIMARY KEY (`id`), KEY `union_idx` (`number`,`username`,`age`), KEY `create_time_idx` (`birthday`) );`</code></pre><p>该表包含3个索引：</p><p>主键：id</p><p>联合索引：number、username、age</p><p>普通索引：birthday</p><p>然后插入一些数据</p><pre><code class="mysql">INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;1244&#39;, &#39;Mercury&#39;, 23, &#39;2000-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;3546&#39;, &#39;Diana&#39;, 12, &#39;2011-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;1124&#39;, &#39;Mars&#39;, 77, &#39;1946-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;6426&#39;, &#39;Saturn&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;3525&#39;, &#39;Eureka&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;5245&#39;, &#39;Mercury1&#39;, 23, &#39;2000-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;3235246&#39;, &#39;Diana1&#39;, 12, &#39;2011-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;6346&#39;, &#39;Mars1&#39;, 77, &#39;1946-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;623461&#39;, &#39;Saturn1&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;235&#39;, &#39;Eureka1&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;11244&#39;, &#39;Mercury3&#39;, 23, &#39;2000-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;13546&#39;, &#39;Diana3&#39;, 12, &#39;2011-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;112244&#39;, &#39;Mars3&#39;, 77, &#39;1946-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;643126&#39;, &#39;Saturn3&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;35215&#39;, &#39;Eureka3&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;52145&#39;, &#39;Mercury4&#39;, 23, &#39;2000-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;32235246&#39;, &#39;Diana4&#39;, 12, &#39;2011-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;6332446&#39;, &#39;Mars4&#39;, 77, &#39;1946-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;6231461&#39;, &#39;Saturn4&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;231115&#39;, &#39;Eureka4&#39;, 32, &#39;1991-01-01 00:00:00&#39;);</code></pre><p>注：测试MySQL版本为8.0.28</p><h3 id="2-案例测试"><a href="#2-案例测试" class="headerlink" title="2.案例测试"></a>2.案例测试</h3><h4 id="2-1-联合索引不满足最左匹配原则"><a href="#2-1-联合索引不满足最左匹配原则" class="headerlink" title="2.1 联合索引不满足最左匹配原则"></a>2.1 联合索引不满足最左匹配原则</h4><p>​最左前缀匹配原则：在MySQL建立联合索引时会遵守最左前缀匹配原则，即最左优先，在检索数据时从联合索引的最左列开始匹配。如本例中联合索引（number，username，age），若想查询走该索引，查询条件中应出现最左边的列，即number。</p><p>测试1：</p><pre><code class="mysql">explain select * from user_info where number = &#39;1244&#39;;</code></pre><p>运行结果：</p><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%951.png"></p><p>key为“union_idx”说明查询走了联合索引。</p><p>测试2：</p><pre><code class="mysql">explain select * from user_info where number = &#39;1244&#39; and age = 23;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%952.png"></p><p>测试2结果中‘key_len’与测试1相同，说明该查询虽然走了联合索引，但因未满足最左匹配原则（查询条件中未出现username），导致username之后的联合索引失效。若number使用范围查询如number&gt;‘1244’，后面的查询条件即使有username也不会生效，这里不做测试。</p><p>但是where后面查询列出现顺序不会影响索引，如</p><p>测试3：</p><pre><code class="mysql">explain select * from user_info where username = &#39;Mercury&#39; and number = &#39;1244&#39;;explain select * from user_info where number = &#39;1244&#39; and username = &#39;Mercury&#39;;</code></pre><p>上面两条语句‘ken_len’相同</p><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%953.png" alt="image-20230531203957562"></p><h4 id="2-2-索引列使用数学运算"><a href="#2-2-索引列使用数学运算" class="headerlink" title="2.2 索引列使用数学运算"></a>2.2 索引列使用数学运算</h4><p>测试4：</p><pre><code class="mysql">explain select * from user_info where id + 1 = 2;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%954.png"></p><p>查询类型为全表扫面，并未使用索引</p><h4 id="2-3-隐式类型转换"><a href="#2-3-隐式类型转换" class="headerlink" title="2.3 隐式类型转换"></a>2.3 隐式类型转换</h4><p>测试5：</p><pre><code class="mysql">explain select * from user_info where number = 1244;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%955.png" alt="测试5"></p><p>number字段为varchar类型，而查询条件为int，类型不匹配导致索引失效。</p><h4 id="2-4模糊查询以-开头"><a href="#2-4模糊查询以-开头" class="headerlink" title="2.4模糊查询以%开头"></a>2.4模糊查询以%开头</h4><p>测试6：</p><pre><code class="mysql">explain select * from user_info where number like &#39;%2&#39;;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%956.png" alt="测试6"></p><h4 id="2-5-使用or"><a href="#2-5-使用or" class="headerlink" title="2.5 使用or"></a>2.5 使用or</h4><p>测试7：</p><pre><code class="mysql">explain select * from user_info where id = 1 or age = 23;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%957.png" alt="测试7"></p><p>age列无索引，导致前面id列索引失效。使用or时切记两边查询条件都要有索引。</p><h4 id="2-6索引列使用函数"><a href="#2-6索引列使用函数" class="headerlink" title="2.6索引列使用函数"></a>2.6索引列使用函数</h4><p>测试8：</p><p>explain select * from user_info where SUBSTR(number, 2,3) &#x3D; ‘12’;</p><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%958.png" alt="测试8"></p><h4 id="2-7两列作比较或者运算"><a href="#2-7两列作比较或者运算" class="headerlink" title="2.7两列作比较或者运算"></a>2.7两列作比较或者运算</h4><p>测试9：</p><pre><code class="mysql">explain select * from user_info where id &lt; age;explain select * from user_info where id + age = 25;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%959.png" alt="测试9"></p><h4 id="2-8其他"><a href="#2-8其他" class="headerlink" title="2.8其他"></a>2.8其他</h4><p>​使用不等于&lt;&gt;，not in， not exists， is not null 以及MySQL优化器认为走全表扫描效率更高的查询。好累啊不想做测试了，开摆。</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 学习笔记 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> MySQL </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>Redis 性能优化方案</title>
       <link href="/2024/01/27/blog47/"/>
       <url>/2024/01/27/blog47/</url>
@@ -71,6 +171,31 @@
         <tags>
             
             <tag> Redis </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>无重复字符的最长子串</title>
+      <link href="/2024/01/21/blog3/"/>
+      <url>/2024/01/21/blog3/</url>
+      
+        <content type="html"><![CDATA[<h3 id="题目介绍"><a href="#题目介绍" class="headerlink" title="题目介绍"></a>题目介绍</h3><p>​题目链接：<a href="https://leetcode.cn/problems/longest-substring-without-repeating-characters/description/">3. 无重复字符的最长子串 - 力扣（Leetcode）</a></p><p>​给定一个字符串 <code>s</code> ，请你找出其中不含有重复字符的 <strong>最长子串</strong> 的长度。</p><p><strong>示例 1:</strong></p><pre><code>输入: s = &quot;abcabcbb&quot;输出: 3 解释: 因为无重复字符的最长子串是 &quot;abc&quot;，所以其长度为 3。</code></pre><p><strong>示例 2:</strong></p><pre><code>输入: s = &quot;bbbbb&quot;输出: 1解释: 因为无重复字符的最长子串是 &quot;b&quot;，所以其长度为 1。</code></pre><p><strong>示例 3:</strong></p><pre><code>输入: s = &quot;pwwkew&quot;输出: 3解释: 因为无重复字符的最长子串是 &quot;wke&quot;，所以其长度为 3。     请注意，你的答案必须是 子串 的长度，&quot;pwke&quot; 是一个子序列，不是子串。</code></pre><h3 id="题目思路"><a href="#题目思路" class="headerlink" title="题目思路"></a>题目思路</h3><p>​没啥好说的，一眼滑动窗口。。。</p><p>​以示例1为例，对于“abcabcbb”，定义两个指针（ left 和 right ），初始都指向字符串0位置，两个指针之间的字符串即为当前找到的子串，right指针向右遍历，使用hashmap记录出现过的字符和字符最后一次出现的位置，当前字串出现重复字符时（即hashmap中存在当前right指向的字符），将left指针移动到重复字符的下一个位置即可（map.get(s.charAt(i)) + 1），遍历过程中记录字串长度最大值。</p><h3 id="代码"><a href="#代码" class="headerlink" title="代码"></a>代码</h3><pre><code class="java">class Solution &#123;  public int lengthOfLongestSubstring(String s) &#123;​    if (s.length() &lt;=  1)&#123;​      return s.length();​    &#125;​    HashMap&lt;Character, Integer&gt; map = new HashMap&lt;Character, Integer&gt;();​    int ans = 0;​    int left = 0;​    for(int i = 0; i &lt; s.length(); i++)&#123;​      if(map.containsKey(s.charAt(i)))&#123;​        left = Math.max(left, map.get(s.charAt(i)) + 1);​      &#125;​      map.put(s.charAt(i), i);​      ans = Math.max(ans, i-left+1);​    &#125;​    return ans;  &#125;&#125;</code></pre>]]></content>
+      
+      
+      <categories>
+          
+          <category> 刷题笔记 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 算法和数据结构 </tag>
             
         </tags>
       
@@ -133,7 +258,7 @@
       <link href="/2024/01/07/blog44/"/>
       <url>/2024/01/07/blog44/</url>
       
-        <content type="html"><![CDATA[<p>现在，几乎所有的系统都支持邮箱登录，如何在邮箱这样的字段上建立合理的索引，是我们今天要讨论的问题。</p><p>假设，你现在维护一个支持邮箱登录的系统，用户表是这么定义的：</p><pre><code class="sql">mysql&gt; create table SUser(ID bigint unsigned primary key,email varchar(64), ... )engine=innodb; </code></pre><p>由于要使用邮箱登录，所以业务代码中一定会出现类似于这样的语句：</p><pre><code class="csharp">mysql&gt; select f1, f2 from SUser where email=&#39;xxx&#39;;</code></pre><p>从第 4 和第 5 篇讲解索引的文章中，我们可以知道，如果 email 这个字段上没有索引，那么这个语句就只能做全表扫描。</p><p>同时，MySQL 是支持前缀索引的，也就是说，你可以定义字符串的一部分作为索引。默认地，如果你创建索引的语句不指定前缀长度，那么索引就会包含整个字符串。</p><p>比如，这两个在 email 字段上创建索引的语句：</p><pre><code class="sql">mysql&gt; alter table SUser add index index1(email);或mysql&gt; alter table SUser add index index2(email(6));</code></pre><p>第一个语句创建的 index1 索引里面，包含了每个记录的整个字符串；而第二个语句创建的 index2 索引里面，对于每个记录都是只取前 6 个字节。</p><p>那么，这两种不同的定义在数据结构和存储上有什么区别呢？如图 2 和 3 所示，就是这两个索引的示意图。</p><p><img src="/../imgs/blog44/d31da662bee595991862c439a5567eb7.jpg" alt="img"></p><p>图 1 email 索引结构</p><p><img src="/../imgs/blog44/134583875561de914991fc2e192cf842.jpg" alt="img"></p><p>图 2 email(6) 索引结构</p><p>从图中你可以看到，由于 email(6) 这个索引结构中每个邮箱字段都只取前 6 个字节（即：zhangs），所以占用的空间会更小，这就是使用前缀索引的优势。</p><p>但，这同时带来的损失是，可能会增加额外的记录扫描次数。</p><p>接下来，我们再看看下面这个语句，在这两个索引定义下分别是怎么执行的。</p><pre><code class="csharp">select id,name,email from SUser where email=&#39;zhangssxyz@xxx.com&#39;;</code></pre><p><strong>如果使用的是 index1</strong>（即 email 整个字符串的索引结构），执行顺序是这样的：</p><ol><li>从 index1 索引树找到满足索引值是’<a href="mailto:&#122;&#104;&#x61;&#110;&#x67;&#115;&#115;&#x78;&#121;&#x7a;&#64;&#x78;&#120;&#120;&#46;&#99;&#111;&#109;">&#122;&#104;&#x61;&#110;&#x67;&#115;&#115;&#x78;&#121;&#x7a;&#64;&#x78;&#120;&#120;&#46;&#99;&#111;&#109;</a>’的这条记录，取得 ID2 的值；</li><li>到主键上查到主键值是 ID2 的行，判断 email 的值是正确的，将这行记录加入结果集；</li><li>取 index1 索引树上刚刚查到的位置的下一条记录，发现已经不满足 email&#x3D;‘<a href="mailto:&#122;&#x68;&#x61;&#110;&#x67;&#x73;&#x73;&#120;&#x79;&#122;&#64;&#120;&#120;&#x78;&#46;&#99;&#x6f;&#109;">&#122;&#x68;&#x61;&#110;&#x67;&#x73;&#x73;&#120;&#x79;&#122;&#64;&#120;&#120;&#x78;&#46;&#99;&#x6f;&#109;</a>’的条件了，循环结束。</li></ol><p>这个过程中，只需要回主键索引取一次数据，所以系统认为只扫描了一行。</p><p><strong>如果使用的是 index2</strong>（即 email(6) 索引结构），执行顺序是这样的：</p><ol><li>从 index2 索引树找到满足索引值是’zhangs’的记录，找到的第一个是 ID1；</li><li>到主键上查到主键值是 ID1 的行，判断出 email 的值不是’<a href="mailto:&#x7a;&#104;&#x61;&#110;&#x67;&#x73;&#x73;&#120;&#x79;&#x7a;&#64;&#120;&#120;&#120;&#46;&#x63;&#111;&#109;">&#x7a;&#104;&#x61;&#110;&#x67;&#x73;&#x73;&#120;&#x79;&#x7a;&#64;&#120;&#120;&#120;&#46;&#x63;&#111;&#109;</a>’，这行记录丢弃；</li><li>取 index2 上刚刚查到的位置的下一条记录，发现仍然是’zhangs’，取出 ID2，再到 ID 索引上取整行然后判断，这次值对了，将这行记录加入结果集；</li><li>重复上一步，直到在 idxe2 上取到的值不是’zhangs’时，循环结束。</li></ol><p>在这个过程中，要回主键索引取 4 次数据，也就是扫描了 4 行。</p><p>通过这个对比，你很容易就可以发现，使用前缀索引后，可能会导致查询语句读数据的次数变多。</p><p>但是，对于这个查询语句来说，如果你定义的 index2 不是 email(6) 而是 email(7），也就是说取 email 字段的前 7 个字节来构建索引的话，即满足前缀’zhangss’的记录只有一个，也能够直接查到 ID2，只扫描一行就结束了。</p><p>也就是说<strong>使用前缀索引，定义好长度，就可以做到既节省空间，又不用额外增加太多的查询成本。</strong></p><p>于是，你就有个问题：当要给字符串创建前缀索引时，有什么方法能够确定我应该使用多长的前缀呢？</p><p>实际上，我们在建立索引时关注的是区分度，区分度越高越好。因为区分度越高，意味着重复的键值越少。因此，我们可以通过统计索引上有多少个不同的值来判断要使用多长的前缀。</p><p>首先，你可以使用下面这个语句，算出这个列上有多少个不同的值：</p><pre><code class="csharp">mysql&gt; select count(distinct email) as L from SUser;</code></pre><p>然后，依次选取不同长度的前缀来看这个值，比如我们要看一下 4~7 个字节的前缀索引，可以用这个语句：</p><pre><code class="sql">mysql&gt; select   count(distinct left(email,4)）as L4,  count(distinct left(email,5)）as L5,  count(distinct left(email,6)）as L6,  count(distinct left(email,7)）as L7,from SUser;</code></pre><p>当然，使用前缀索引很可能会损失区分度，所以你需要预先设定一个可以接受的损失比例，比如 5%。然后，在返回的 L4~L7 中，找出不小于 L * 95% 的值，假设这里 L6、L7 都满足，你就可以选择前缀长度为 6。</p><h1 id="前缀索引对覆盖索引的影响"><a href="#前缀索引对覆盖索引的影响" class="headerlink" title="前缀索引对覆盖索引的影响"></a>前缀索引对覆盖索引的影响</h1><p>前面我们说了使用前缀索引可能会增加扫描行数，这会影响到性能。其实，前缀索引的影响不止如此，我们再看一下另外一个场景。</p><p>你先来看看这个 SQL 语句：</p><pre><code class="csharp">select id,email from SUser where email=&#39;zhangssxyz@xxx.com&#39;;</code></pre><p>与前面例子中的 SQL 语句</p><pre><code class="csharp">select id,name,email from SUser where email=&#39;zhangssxyz@xxx.com&#39;;</code></pre><p>相比，这个语句只要求返回 id 和 email 字段。</p><p>所以，如果使用 index1（即 email 整个字符串的索引结构）的话，可以利用覆盖索引，从 index1 查到结果后直接就返回了，不需要回到 ID 索引再去查一次。而如果使用 index2（即 email(6) 索引结构）的话，就不得不回到 ID 索引再去判断 email 字段的值。</p><p>即使你将 index2 的定义修改为 email(18) 的前缀索引，这时候虽然 index2 已经包含了所有的信息，但 InnoDB 还是要回到 id 索引再查一下，因为系统并不确定前缀索引的定义是否截断了完整信息。</p><p>也就是说，使用前缀索引就用不上覆盖索引对查询性能的优化了，这也是你在选择是否使用前缀索引时需要考虑的一个因素。</p><h1 id="其他方式"><a href="#其他方式" class="headerlink" title="其他方式"></a>其他方式</h1><p>对于类似于邮箱这样的字段来说，使用前缀索引的效果可能还不错。但是，遇到前缀的区分度不够好的情况时，我们要怎么办呢？</p><p>比如，我们国家的身份证号，一共 18 位，其中前 6 位是地址码，所以同一个县的人的身份证号前 6 位一般会是相同的。</p><p>假设你维护的数据库是一个市的公民信息系统，这时候如果对身份证号做长度为 6 的前缀索引的话，这个索引的区分度就非常低了。</p><p>按照我们前面说的方法，可能你需要创建长度为 12 以上的前缀索引，才能够满足区分度要求。</p><p>但是，索引选取的越长，占用的磁盘空间就越大，相同的数据页能放下的索引值就越少，搜索的效率也就会越低。</p><p>那么，如果我们能够确定业务需求里面只有按照身份证进行等值查询的需求，还有没有别的处理方法呢？这种方法，既可以占用更小的空间，也能达到相同的查询效率。</p><p>答案是，有的。</p><p><strong>第一种方式是使用倒序存储。</strong>如果你存储身份证号的时候把它倒过来存，每次查询的时候，你可以这么写：</p><pre><code class="csharp">mysql&gt; select field_list from t where id_card = reverse(&#39;input_id_card_string&#39;);</code></pre><p>由于身份证号的最后 6 位没有地址码这样的重复逻辑，所以最后这 6 位很可能就提供了足够的区分度。当然了，实践中你不要忘记使用 count(distinct) 方法去做个验证。</p><p><strong>第二种方式是使用 hash 字段。</strong>你可以在表上再创建一个整数字段，来保存身份证的校验码，同时在这个字段上创建索引。</p><pre><code class="sql">mysql&gt; alter table t add id_card_crc int unsigned, add index(id_card_crc);</code></pre><p>然后每次插入新记录的时候，都同时用 crc32() 这个函数得到校验码填到这个新字段。由于校验码可能存在冲突，也就是说两个不同的身份证号通过 crc32() 函数得到的结果可能是相同的，所以你的查询语句 where 部分要判断 id_card 的值是否精确相同。</p><pre><code class="csharp">mysql&gt; select field_list from t where id_card_crc=crc32(&#39;input_id_card_string&#39;) and id_card=&#39;input_id_card_string&#39;</code></pre><p>这样，索引的长度变成了 4 个字节，比原来小了很多。</p><p>接下来，我们再一起看看<strong>使用倒序存储和使用 hash 字段这两种方法的异同点。</strong></p><p>首先，它们的相同点是，都不支持范围查询。倒序存储的字段上创建的索引是按照倒序字符串的方式排序的，已经没有办法利用索引方式查出身份证号码在 [ID_X, ID_Y] 的所有市民了。同样地，hash 字段的方式也只能支持等值查询。</p><p>它们的区别，主要体现在以下三个方面：</p><ol><li>从占用的额外空间来看，倒序存储方式在主键索引上，不会消耗额外的存储空间，而 hash 字段方法需要增加一个字段。当然，倒序存储方式使用 4 个字节的前缀长度应该是不够的，如果再长一点，这个消耗跟额外这个 hash 字段也差不多抵消了。</li><li>在 CPU 消耗方面，倒序方式每次写和读的时候，都需要额外调用一次 reverse 函数，而 hash 字段的方式需要额外调用一次 crc32() 函数。如果只从这两个函数的计算复杂度来看的话，reverse 函数额外消耗的 CPU 资源会更小些。</li><li>从查询效率上看，使用 hash 字段方式的查询性能相对更稳定一些。因为 crc32 算出来的值虽然有冲突的概率，但是概率非常小，可以认为每次查询的平均扫描行数接近 1。而倒序存储方式毕竟还是用的前缀索引的方式，也就是说还是会增加扫描行数。</li></ol><h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>在今天这篇文章中，我跟你聊了聊字符串字段创建索引的场景。我们来回顾一下，你可以使用的方式有：</p><ol><li>直接创建完整索引，这样可能比较占用空间；</li><li>创建前缀索引，节省空间，但会增加查询扫描次数，并且不能使用覆盖索引；</li><li>倒序存储，再创建前缀索引，用于绕过字符串本身前缀的区分度不够的问题；</li><li>创建 hash 字段索引，查询性能稳定，有额外的存储和计算消耗，跟第三种方式一样，都不支持范围扫描。</li></ol><p>在实际应用中，你要根据业务字段的特点选择使用哪种方式。</p>]]></content>
+        <content type="html"><![CDATA[<p>现在，几乎所有的系统都支持邮箱登录，如何在邮箱这样的字段上建立合理的索引，是我们今天要讨论的问题。</p><p>假设，你现在维护一个支持邮箱登录的系统，用户表是这么定义的：</p><pre><code class="sql">mysql&gt; create table SUser(ID bigint unsigned primary key,email varchar(64), ... )engine=innodb; </code></pre><p>由于要使用邮箱登录，所以业务代码中一定会出现类似于这样的语句：</p><pre><code class="csharp">mysql&gt; select f1, f2 from SUser where email=&#39;xxx&#39;;</code></pre><p>从第 4 和第 5 篇讲解索引的文章中，我们可以知道，如果 email 这个字段上没有索引，那么这个语句就只能做全表扫描。</p><p>同时，MySQL 是支持前缀索引的，也就是说，你可以定义字符串的一部分作为索引。默认地，如果你创建索引的语句不指定前缀长度，那么索引就会包含整个字符串。</p><p>比如，这两个在 email 字段上创建索引的语句：</p><pre><code class="sql">mysql&gt; alter table SUser add index index1(email);或mysql&gt; alter table SUser add index index2(email(6));</code></pre><p>第一个语句创建的 index1 索引里面，包含了每个记录的整个字符串；而第二个语句创建的 index2 索引里面，对于每个记录都是只取前 6 个字节。</p><p>那么，这两种不同的定义在数据结构和存储上有什么区别呢？如图 2 和 3 所示，就是这两个索引的示意图。</p><p><img src="/../imgs/blog44/d31da662bee595991862c439a5567eb7.jpg" alt="img"></p><p>图 1 email 索引结构</p><p><img src="/../imgs/blog44/134583875561de914991fc2e192cf842.jpg" alt="img"></p><p>图 2 email(6) 索引结构</p><p>从图中你可以看到，由于 email(6) 这个索引结构中每个邮箱字段都只取前 6 个字节（即：zhangs），所以占用的空间会更小，这就是使用前缀索引的优势。</p><p>但，这同时带来的损失是，可能会增加额外的记录扫描次数。</p><p>接下来，我们再看看下面这个语句，在这两个索引定义下分别是怎么执行的。</p><pre><code class="csharp">select id,name,email from SUser where email=&#39;zhangssxyz@xxx.com&#39;;</code></pre><p><strong>如果使用的是 index1</strong>（即 email 整个字符串的索引结构），执行顺序是这样的：</p><ol><li>从 index1 索引树找到满足索引值是’<a href="mailto:&#122;&#104;&#x61;&#x6e;&#103;&#x73;&#x73;&#120;&#121;&#x7a;&#x40;&#x78;&#x78;&#x78;&#x2e;&#x63;&#x6f;&#x6d;">&#122;&#104;&#x61;&#x6e;&#103;&#x73;&#x73;&#120;&#121;&#x7a;&#x40;&#x78;&#x78;&#x78;&#x2e;&#x63;&#x6f;&#x6d;</a>’的这条记录，取得 ID2 的值；</li><li>到主键上查到主键值是 ID2 的行，判断 email 的值是正确的，将这行记录加入结果集；</li><li>取 index1 索引树上刚刚查到的位置的下一条记录，发现已经不满足 email&#x3D;‘<a href="mailto:&#x7a;&#104;&#97;&#x6e;&#103;&#115;&#115;&#120;&#x79;&#x7a;&#64;&#120;&#x78;&#x78;&#x2e;&#x63;&#x6f;&#109;">&#x7a;&#104;&#97;&#x6e;&#103;&#115;&#115;&#120;&#x79;&#x7a;&#64;&#120;&#x78;&#x78;&#x2e;&#x63;&#x6f;&#109;</a>’的条件了，循环结束。</li></ol><p>这个过程中，只需要回主键索引取一次数据，所以系统认为只扫描了一行。</p><p><strong>如果使用的是 index2</strong>（即 email(6) 索引结构），执行顺序是这样的：</p><ol><li>从 index2 索引树找到满足索引值是’zhangs’的记录，找到的第一个是 ID1；</li><li>到主键上查到主键值是 ID1 的行，判断出 email 的值不是’<a href="mailto:&#122;&#x68;&#97;&#x6e;&#103;&#x73;&#115;&#120;&#121;&#x7a;&#x40;&#x78;&#x78;&#120;&#46;&#x63;&#111;&#x6d;">&#122;&#x68;&#97;&#x6e;&#103;&#x73;&#115;&#120;&#121;&#x7a;&#x40;&#x78;&#x78;&#120;&#46;&#x63;&#111;&#x6d;</a>’，这行记录丢弃；</li><li>取 index2 上刚刚查到的位置的下一条记录，发现仍然是’zhangs’，取出 ID2，再到 ID 索引上取整行然后判断，这次值对了，将这行记录加入结果集；</li><li>重复上一步，直到在 idxe2 上取到的值不是’zhangs’时，循环结束。</li></ol><p>在这个过程中，要回主键索引取 4 次数据，也就是扫描了 4 行。</p><p>通过这个对比，你很容易就可以发现，使用前缀索引后，可能会导致查询语句读数据的次数变多。</p><p>但是，对于这个查询语句来说，如果你定义的 index2 不是 email(6) 而是 email(7），也就是说取 email 字段的前 7 个字节来构建索引的话，即满足前缀’zhangss’的记录只有一个，也能够直接查到 ID2，只扫描一行就结束了。</p><p>也就是说<strong>使用前缀索引，定义好长度，就可以做到既节省空间，又不用额外增加太多的查询成本。</strong></p><p>于是，你就有个问题：当要给字符串创建前缀索引时，有什么方法能够确定我应该使用多长的前缀呢？</p><p>实际上，我们在建立索引时关注的是区分度，区分度越高越好。因为区分度越高，意味着重复的键值越少。因此，我们可以通过统计索引上有多少个不同的值来判断要使用多长的前缀。</p><p>首先，你可以使用下面这个语句，算出这个列上有多少个不同的值：</p><pre><code class="csharp">mysql&gt; select count(distinct email) as L from SUser;</code></pre><p>然后，依次选取不同长度的前缀来看这个值，比如我们要看一下 4~7 个字节的前缀索引，可以用这个语句：</p><pre><code class="sql">mysql&gt; select   count(distinct left(email,4)）as L4,  count(distinct left(email,5)）as L5,  count(distinct left(email,6)）as L6,  count(distinct left(email,7)）as L7,from SUser;</code></pre><p>当然，使用前缀索引很可能会损失区分度，所以你需要预先设定一个可以接受的损失比例，比如 5%。然后，在返回的 L4~L7 中，找出不小于 L * 95% 的值，假设这里 L6、L7 都满足，你就可以选择前缀长度为 6。</p><h1 id="前缀索引对覆盖索引的影响"><a href="#前缀索引对覆盖索引的影响" class="headerlink" title="前缀索引对覆盖索引的影响"></a>前缀索引对覆盖索引的影响</h1><p>前面我们说了使用前缀索引可能会增加扫描行数，这会影响到性能。其实，前缀索引的影响不止如此，我们再看一下另外一个场景。</p><p>你先来看看这个 SQL 语句：</p><pre><code class="csharp">select id,email from SUser where email=&#39;zhangssxyz@xxx.com&#39;;</code></pre><p>与前面例子中的 SQL 语句</p><pre><code class="csharp">select id,name,email from SUser where email=&#39;zhangssxyz@xxx.com&#39;;</code></pre><p>相比，这个语句只要求返回 id 和 email 字段。</p><p>所以，如果使用 index1（即 email 整个字符串的索引结构）的话，可以利用覆盖索引，从 index1 查到结果后直接就返回了，不需要回到 ID 索引再去查一次。而如果使用 index2（即 email(6) 索引结构）的话，就不得不回到 ID 索引再去判断 email 字段的值。</p><p>即使你将 index2 的定义修改为 email(18) 的前缀索引，这时候虽然 index2 已经包含了所有的信息，但 InnoDB 还是要回到 id 索引再查一下，因为系统并不确定前缀索引的定义是否截断了完整信息。</p><p>也就是说，使用前缀索引就用不上覆盖索引对查询性能的优化了，这也是你在选择是否使用前缀索引时需要考虑的一个因素。</p><h1 id="其他方式"><a href="#其他方式" class="headerlink" title="其他方式"></a>其他方式</h1><p>对于类似于邮箱这样的字段来说，使用前缀索引的效果可能还不错。但是，遇到前缀的区分度不够好的情况时，我们要怎么办呢？</p><p>比如，我们国家的身份证号，一共 18 位，其中前 6 位是地址码，所以同一个县的人的身份证号前 6 位一般会是相同的。</p><p>假设你维护的数据库是一个市的公民信息系统，这时候如果对身份证号做长度为 6 的前缀索引的话，这个索引的区分度就非常低了。</p><p>按照我们前面说的方法，可能你需要创建长度为 12 以上的前缀索引，才能够满足区分度要求。</p><p>但是，索引选取的越长，占用的磁盘空间就越大，相同的数据页能放下的索引值就越少，搜索的效率也就会越低。</p><p>那么，如果我们能够确定业务需求里面只有按照身份证进行等值查询的需求，还有没有别的处理方法呢？这种方法，既可以占用更小的空间，也能达到相同的查询效率。</p><p>答案是，有的。</p><p><strong>第一种方式是使用倒序存储。</strong>如果你存储身份证号的时候把它倒过来存，每次查询的时候，你可以这么写：</p><pre><code class="csharp">mysql&gt; select field_list from t where id_card = reverse(&#39;input_id_card_string&#39;);</code></pre><p>由于身份证号的最后 6 位没有地址码这样的重复逻辑，所以最后这 6 位很可能就提供了足够的区分度。当然了，实践中你不要忘记使用 count(distinct) 方法去做个验证。</p><p><strong>第二种方式是使用 hash 字段。</strong>你可以在表上再创建一个整数字段，来保存身份证的校验码，同时在这个字段上创建索引。</p><pre><code class="sql">mysql&gt; alter table t add id_card_crc int unsigned, add index(id_card_crc);</code></pre><p>然后每次插入新记录的时候，都同时用 crc32() 这个函数得到校验码填到这个新字段。由于校验码可能存在冲突，也就是说两个不同的身份证号通过 crc32() 函数得到的结果可能是相同的，所以你的查询语句 where 部分要判断 id_card 的值是否精确相同。</p><pre><code class="csharp">mysql&gt; select field_list from t where id_card_crc=crc32(&#39;input_id_card_string&#39;) and id_card=&#39;input_id_card_string&#39;</code></pre><p>这样，索引的长度变成了 4 个字节，比原来小了很多。</p><p>接下来，我们再一起看看<strong>使用倒序存储和使用 hash 字段这两种方法的异同点。</strong></p><p>首先，它们的相同点是，都不支持范围查询。倒序存储的字段上创建的索引是按照倒序字符串的方式排序的，已经没有办法利用索引方式查出身份证号码在 [ID_X, ID_Y] 的所有市民了。同样地，hash 字段的方式也只能支持等值查询。</p><p>它们的区别，主要体现在以下三个方面：</p><ol><li>从占用的额外空间来看，倒序存储方式在主键索引上，不会消耗额外的存储空间，而 hash 字段方法需要增加一个字段。当然，倒序存储方式使用 4 个字节的前缀长度应该是不够的，如果再长一点，这个消耗跟额外这个 hash 字段也差不多抵消了。</li><li>在 CPU 消耗方面，倒序方式每次写和读的时候，都需要额外调用一次 reverse 函数，而 hash 字段的方式需要额外调用一次 crc32() 函数。如果只从这两个函数的计算复杂度来看的话，reverse 函数额外消耗的 CPU 资源会更小些。</li><li>从查询效率上看，使用 hash 字段方式的查询性能相对更稳定一些。因为 crc32 算出来的值虽然有冲突的概率，但是概率非常小，可以认为每次查询的平均扫描行数接近 1。而倒序存储方式毕竟还是用的前缀索引的方式，也就是说还是会增加扫描行数。</li></ol><h1 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h1><p>在今天这篇文章中，我跟你聊了聊字符串字段创建索引的场景。我们来回顾一下，你可以使用的方式有：</p><ol><li>直接创建完整索引，这样可能比较占用空间；</li><li>创建前缀索引，节省空间，但会增加查询扫描次数，并且不能使用覆盖索引；</li><li>倒序存储，再创建前缀索引，用于绕过字符串本身前缀的区分度不够的问题；</li><li>创建 hash 字段索引，查询性能稳定，有额外的存储和计算消耗，跟第三种方式一样，都不支持范围扫描。</li></ol><p>在实际应用中，你要根据业务字段的特点选择使用哪种方式。</p>]]></content>
       
       
       <categories>
@@ -146,6 +271,31 @@
         <tags>
             
             <tag> MySQL </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>礼盒的最大甜蜜度</title>
+      <link href="/2024/01/01/blog5/"/>
+      <url>/2024/01/01/blog5/</url>
+      
+        <content type="html"><![CDATA[<h3 id="题目介绍"><a href="#题目介绍" class="headerlink" title="题目介绍"></a>题目介绍</h3><p>​题目链接：<a href="https://leetcode.cn/problems/longest-substring-without-repeating-characters/description/"><a href="https://leetcode.cn/problems/maximum-tastiness-of-candy-basket/description/">2517. 礼盒的最大甜蜜度 - 力扣（Leetcode）</a></a></p><p>​给你一个正整数数组 <code>price</code> ，其中 <code>price[i]</code> 表示第 <code>i</code> 类糖果的价格，另给你一个正整数 <code>k</code> 。</p><p>商店组合 <code>k</code> 类 <strong>不同</strong> 糖果打包成礼盒出售。礼盒的 <strong>甜蜜度</strong> 是礼盒中任意两种糖果 <strong>价格</strong> 绝对差的最小值。</p><p>返回礼盒的 <strong>最大</strong> 甜蜜度<em>。</em></p><p><strong>示例 1：</strong></p><pre><code>输入：price = [13,5,1,8,21,2], k = 3输出：8解释：选出价格分别为 [13,5,21] 的三类糖果。礼盒的甜蜜度为 min(|13 - 5|, |13 - 21|, |5 - 21|) = min(8, 8, 16) = 8 。可以证明能够取得的最大甜蜜度就是 8 。</code></pre><p><strong>示例 2：</strong></p><pre><code>输入：price = [1,3,1], k = 2输出：2解释：选出价格分别为 [1,3] 的两类糖果。 礼盒的甜蜜度为 min(|1 - 3|) = min(2) = 2 。可以证明能够取得的最大甜蜜度就是 2 。</code></pre><p><strong>示例 3：</strong></p><pre><code>输入：price = [7,7,7,7], k = 2输出：0解释：从现有的糖果中任选两类糖果，甜蜜度都会是 0 。</code></pre><h3 id="题目思路"><a href="#题目思路" class="headerlink" title="题目思路"></a>题目思路</h3><p>​最小最大，基本要想到二分了，直接二分甜蜜值，因为选择的差值跟顺序无关，我们可以排序后贪心，当前选择大于之前选择加甜蜜值就统计答案一次，如果最终次数大于等于tastiness，说明甜蜜值还可以更大，收缩左边界，否则收缩右边界。</p><h3 id="代码"><a href="#代码" class="headerlink" title="代码"></a>代码</h3><pre><code class="java">class Solution &#123;  public int maximumTastiness(int[] price, int k) &#123;​    Arrays.sort(price);​    int left = 0, right = price[price.length - 1];​    while (left +1 != right) &#123;​      int mid = (left + right) / 2;​      if (check(price, k, mid)) &#123;​        left = mid;​      &#125; else &#123;​        right = mid;​      &#125;​    &#125;​    return left;  &#125;  public boolean check(int[] price, int k, int tastiness) &#123;​    int prev = Integer.MIN_VALUE / 2;​    int cnt = 0;​    for (int p : price) &#123;​      if (p - prev &gt;= tastiness) &#123;​        cnt++;​        prev = p;​      &#125;​    &#125;​    return cnt &gt;= k;  &#125;&#125;</code></pre>]]></content>
+      
+      
+      <categories>
+          
+          <category> 刷题笔记 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 算法和数据结构 </tag>
             
         </tags>
       
@@ -798,31 +948,6 @@
     
     
     <entry>
-      <title>redis主从同步</title>
-      <link href="/2023/10/02/blog6/"/>
-      <url>/2023/10/02/blog6/</url>
-      
-        <content type="html"><![CDATA[<h1 id="Redis主从同步"><a href="#Redis主从同步" class="headerlink" title="Redis主从同步"></a>Redis主从同步</h1><h3 id="全量同步"><a href="#全量同步" class="headerlink" title="全量同步"></a>全量同步</h3><p>主从第一次建立连接时，会执行<strong>全量同步</strong>，将master节点的所有数据都拷贝给slave节点，流程：</p><p><img src="/../imgs/blog6/image-20210725152222497.png" alt="image-20210725152222497"></p><p>这里有一个问题，master如何得知salve是第一次来连接呢？？</p><p>有几个概念，可以作为判断依据：</p><ul><li><strong>Replication Id</strong>：简称replid，是数据集的标记，id一致则说明是同一数据集。每一个master都有唯一的replid，slave则会继承master节点的replid</li><li><strong>offset</strong>：偏移量，随着记录在repl_baklog中的数据增多而逐渐增大。slave完成同步时也会记录当前同步的offset。如果slave的offset小于master的offset，说明slave数据落后于master，需要更新。</li></ul><p>因此slave做数据同步，必须向master声明自己的replication id 和offset，master才可以判断到底需要同步哪些数据。</p><p>因为slave原本也是一个master，有自己的replid和offset，当第一次变成slave，与master建立连接时，发送的replid和offset是自己的replid和offset。</p><p>master判断发现slave发送来的replid与自己的不一致，说明这是一个全新的slave，就知道要做全量同步了。</p><p>master会将自己的replid和offset都发送给这个slave，slave保存这些信息。以后slave的replid就与master一致了。</p><p>因此，<strong>master判断一个节点是否是第一次同步的依据，就是看replid是否一致</strong>。</p><p>如图：</p><p><img src="/../imgs/blog6/image-20210725152700914.png" alt="image-20210725152700914"></p><p>完整流程描述：</p><ul><li>slave节点请求增量同步</li><li>master节点判断replid，发现不一致，拒绝增量同步</li><li>master将完整内存数据生成RDB，发送RDB到slave</li><li>slave清空本地数据，加载master的RDB</li><li>master将RDB期间的命令记录在repl_baklog，并持续将log中的命令发送给slave</li><li>slave执行接收到的命令，保持与master之间的同步</li></ul><h3 id="2-2-2-增量同步"><a href="#2-2-2-增量同步" class="headerlink" title="2.2.2.增量同步"></a>2.2.2.增量同步</h3><p>全量同步需要先做RDB，然后将RDB文件通过网络传输个slave，成本太高了。因此除了第一次做全量同步，其它大多数时候slave与master都是做<strong>增量同步</strong>。</p><p>什么是增量同步？就是只更新slave与master存在差异的部分数据。如图：</p><p><img src="/../imgs/blog6/image-20210725153201086.png" alt="image-20210725153201086"></p><p>那么master怎么知道slave与自己的数据差异在哪里呢?</p><h3 id="repl-backlog原理"><a href="#repl-backlog原理" class="headerlink" title="repl_backlog原理"></a>repl_backlog原理</h3><p>master怎么知道slave与自己的数据差异在哪里呢?</p><p>这就要说到全量同步时的repl_baklog文件了。</p><p>这个文件是一个固定大小的数组，只不过数组是环形，也就是说<strong>角标到达数组末尾后，会再次从0开始读写</strong>，这样数组头部的数据就会被覆盖。</p><p>repl_baklog中会记录Redis处理过的命令日志及offset，包括master当前的offset，和slave已经拷贝到的offset：</p><p><img src="/../imgs/blog6/image-20210725153359022.png" alt="image-20210725153359022"> </p><p>slave与master的offset之间的差异，就是salve需要增量拷贝的数据了。</p><p>随着不断有数据写入，master的offset逐渐变大，slave也不断的拷贝，追赶master的offset：</p><p><img src="/../imgs/blog6/image-20210725153524190.png" alt="image-20210725153524190"> </p><p>直到数组被填满：</p><p><img src="/../imgs/blog6/image-20210725153715910.png" alt="image-20210725153715910"> </p><p>此时，如果有新的数据写入，就会覆盖数组中的旧数据。不过，旧的数据只要是绿色的，说明是已经被同步到slave的数据，即便被覆盖了也没什么影响。因为未同步的仅仅是红色部分。</p><p>但是，如果slave出现网络阻塞，导致master的offset远远超过了slave的offset： </p><p><img src="/../imgs/blog6/image-20210725153937031.png" alt="image-20210725153937031"> </p><p>如果master继续写入新数据，其offset就会覆盖旧的数据，直到将slave现在的offset也覆盖：</p><p><img src="/../imgs/blog6/image-20210725154155984.png" alt="image-20210725154155984"> </p><p>棕色框中的红色部分，就是尚未同步，但是却已经被覆盖的数据。此时如果slave恢复，需要同步，却发现自己的offset都没有了，无法完成增量同步了。只能做全量同步。</p><p><img src="/../imgs/blog6/image-20210725154216392.png" alt="image-20210725154216392"></p><h3 id="主从同步优化"><a href="#主从同步优化" class="headerlink" title="主从同步优化"></a>主从同步优化</h3><p>主从同步可以保证主从数据的一致性，非常重要。</p><p>可以从以下几个方面来优化Redis主从就集群：</p><ul><li>在master中配置repl-diskless-sync yes启用无磁盘复制，避免全量同步时的磁盘IO。</li><li>Redis单节点上的内存占用不要太大，减少RDB导致的过多磁盘IO</li><li>适当提高repl_baklog的大小，发现slave宕机时尽快实现故障恢复，尽可能避免全量同步</li><li>限制一个master上的slave节点数量，如果实在是太多slave，则可以采用主-从-从链式结构，减少master压力</li></ul><p>主从从架构图：</p><p><img src="/../imgs/blog6/image-20210725154405899.png" alt="image-20210725154405899"></p><h3 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h3><p>简述全量同步和增量同步区别？</p><ul><li>全量同步：master将完整内存数据生成RDB，发送RDB到slave。后续命令则记录在repl_baklog，逐个发送给slave。</li><li>增量同步：slave提交自己的offset到master，master获取repl_baklog中从offset之后的命令给slave</li></ul><p>什么时候执行全量同步？</p><ul><li>slave节点第一次连接master节点时</li><li>slave节点断开时间太久，repl_baklog中的offset已经被覆盖时</li></ul><p>什么时候执行增量同步？</p><ul><li>slave节点断开又恢复，并且在repl_baklog中能找到offset时</li></ul><p>转载自：黑马程序员Redis教程（【黑马程序员Redis入门到实战教程，深度透析redis底层原理+redis分布式锁+企业解决方案+黑马点评实战项目】 <a href="https://www.bilibili.com/video/BV1cr4y1671t/?share_source=copy_web%EF%BC%89">https://www.bilibili.com/video/BV1cr4y1671t/?share_source=copy_web）</a></p>]]></content>
-      
-      
-      <categories>
-          
-          <category> 学习笔记 </category>
-          
-      </categories>
-      
-      
-        <tags>
-            
-            <tag> redis </tag>
-            
-        </tags>
-      
-    </entry>
-    
-    
-    
-    <entry>
       <title>常见的Server的并发模型</title>
       <link href="/2023/10/01/blog31/"/>
       <url>/2023/10/01/blog31/</url>
@@ -967,56 +1092,6 @@
     
     
     <entry>
-      <title>为什么Redis集群分片最大槽数是16384个</title>
-      <link href="/2023/09/01/blog4/"/>
-      <url>/2023/09/01/blog4/</url>
-      
-        <content type="html"><![CDATA[<h4 id="为什么Redis集群分片最大槽数是16384个？"><a href="#为什么Redis集群分片最大槽数是16384个？" class="headerlink" title="为什么Redis集群分片最大槽数是16384个？"></a>为什么Redis集群分片最大槽数是16384个？</h4><p>​GitHub上已有关于这个问题的解答，<a href="https://github.com/redis/redis/issues/2576">why redis-cluster use 16384 slots? · Issue #2576 · redis&#x2F;redis (github.com)</a>，这里只做大概解释</p><p>​Redis集群通过CRC16算法对key进行哈希并对16384取模来决定该key具体放在哪个槽位，而该算法的hash结果有16位，也就是65536个值，那为啥不分配65536个槽而是16384（2^14）个？</p><p>​首先翻译一下作者的解答：</p><p>​正常的心跳数据包带有节点的完整配置，可以用幂等方式用旧的节点替换旧节点，以便更新旧的配置。这意味着它们包含原始节点的插槽配置，该节点使用2k的空间和16k的插槽，但是会使用8k的空间(使用65K的插槽)。同时，由于其他设计折衷，Redis集群不太可能扩展到1000个以上的主节点。因此16k处于正确的范围内，以确保每个主机具有足够的插槽，最多可容纳1000个矩阵，但数量足够少，可以轻松地将插槽配置作为原始位图传播。请注意，在小型群集中，位图将难以压缩，因为当N较小时，位图将设置的slot &#x2F; N位占设置位的很大百分比。</p><p>​翻译了又好像没翻译，还是没看懂，，，</p><p>​其实总结起来就是以下三个因素的考虑。</p><p>（1）如果槽位个数为65536，发送的心跳信息头达到8k，发送的心跳包过大。</p><p><img src="/imgs/blog4/image-20230601095147944.png"></p><p>上图即为Redis节点发送的信息头结构，其中占据最大空间的就是myslots[CLUSTER_SLOTS&#x2F;8]。如果槽位为65536个，大小为65536 &#x2F; 8 &#x2F; 1024 &#x3D; 8 kb。如果槽位为16384个，大小为16384 &#x2F; 8 &#x2F; 1024 &#x3D; 2 kb。在Redis集群中，Redis节点需要发送一定数量的ping消息作为心跳包，如果槽位为65536个，发送的消息头太大，浪费带宽。</p><p>（2）Redis的集群主节点数量基本不可能超过1000个，16384个槽位已经够用<br>集群节点越多，心跳包的消息体内携带的数据越多。如果节点超过1000个，也会导致网络拥堵。因此Redis作者不建议Redis cluster节点数量超过1000个。 那么，对于节点数在1000以内的redis cluster集群，16384个槽位够用了。没有必要拓展到65536个。</p><p>（3）节点一定的情况下，槽位越少，压缩比越高，容易传输<br>Redis主节点的配置信息中它所负责的哈希槽是通过一张bitmap的形式来保存的，在传输过程中会对bitmap进行压缩，但是如果bitmap的填充率slots &#x2F;N很高的话(N表示节点数)，bitmap的压缩率就很低。也就是说当节点数一定时，哈希槽数量很多的话，bitmap的压缩率就很低，不易传输。</p>]]></content>
-      
-      
-      <categories>
-          
-          <category> 学习笔记 </category>
-          
-      </categories>
-      
-      
-        <tags>
-            
-            <tag> redis </tag>
-            
-        </tags>
-      
-    </entry>
-    
-    
-    
-    <entry>
-      <title>Redis持久化</title>
-      <link href="/2023/08/31/blog1/"/>
-      <url>/2023/08/31/blog1/</url>
-      
-        <content type="html"><![CDATA[<h1 id="1-Redis持久化"><a href="#1-Redis持久化" class="headerlink" title="1.Redis持久化"></a>1.Redis持久化</h1><p>Redis有两种持久化方案：</p><ul><li>RDB持久化</li><li>AOF持久化</li></ul><h2 id="1-1-RDB"><a href="#1-1-RDB" class="headerlink" title="1.1.RDB"></a>1.1.RDB</h2><p>RDB全称Redis Database Backup file（Redis数据备份文件），RDB其实就是把数据以快照的形式保存在磁盘上。什么是快照呢，你可以理解成把当前时刻的数据拍成一张照片保存下来。</p><p>RDB持久化是指在指定的时间间隔内将内存中的数据集快照写入磁盘。也是默认的持久化方式，这种方式是就是将内存中数据以快照的方式写入到二进制文件中，默认的文件名为dump.rdb。</p><h3 id="1-1-1-RDB执行"><a href="#1-1-1-RDB执行" class="headerlink" title="1.1.1.RDB执行"></a>1.1.1.RDB执行</h3><p>RDB持久化在四种情况下会执行：</p><ul><li>执行save命令</li><li>执行bgsave命令</li><li>Redis停机时</li><li>触发RDB条件时</li></ul><p><strong>1）save命令</strong></p><p>save命令会导致主进程执行RDB，这个过程中其它所有命令都会被阻塞。</p><p><strong>2）bgsave命令</strong></p><p>bgsave命令执行后Redis执行fork操作创建子进程完成RDB，主进程可以继续处理用户请求，不会阻塞。</p><p><strong>3）停机时</strong></p><p>Redis停机时会执行一次save命令，实现RDB持久化。</p><p><strong>4）触发RDB条件</strong></p><p>Redis内部有触发RDB的机制，可以在redis.conf文件中找到，格式如下：</p><pre><code class="properties"># 下面的配置代表600秒内如果至少有10个key被修改，则执行bgsavesave 600 10  </code></pre><p>RDB的其它配置也可以在redis.conf文件中设置：</p><pre><code class="properties"># 是否进行压缩（会耗费cpu资源）rdbcompression yes# RDB文件保存名称（默认为dump.rdb）dbfilename dump.rdb  </code></pre><h3 id="1-1-2-RDB原理"><a href="#1-1-2-RDB原理" class="headerlink" title="1.1.2.RDB原理"></a>1.1.2.RDB原理</h3><p>bgsave开始时会fork主进程得到子进程，子进程共享主进程的内存数据。完成fork后读取内存数据并写入 RDB 文件。</p><p>fork采用的是copy-on-write技术：</p><ul><li>当主进程执行读操作时，访问共享内存；</li><li>当主进程执行写操作时，则会拷贝一份数据，执行写操作。</li></ul><p><img src="/imgs/blog1/image-20210725151319695-16855170885551.png"></p><h2 id="1-2-AOF"><a href="#1-2-AOF" class="headerlink" title="1.2.AOF"></a>1.2.AOF</h2><h3 id="1-2-1-AOF原理"><a href="#1-2-1-AOF原理" class="headerlink" title="1.2.1.AOF原理"></a>1.2.1.AOF原理</h3><p>AOF全称为Append Only File（追加文件）。Redis处理的每一个写命令都会记录在AOF文件，可以看做是命令日志文件。</p><h3 id="1-2-2-AOF配置"><a href="#1-2-2-AOF配置" class="headerlink" title="1.2.2.AOF配置"></a>1.2.2.AOF配置</h3><p>AOF默认是关闭的，需要修改redis.conf配置文件来开启AOF：</p><pre><code class="properties"># 是否开启AOF功能，默认是noappendonly yes</code></pre><p>AOF的命令记录的频率也可以通过redis.conf文件来配：</p><pre><code class="properties"># 每执行一次写命令，立即记录appendfsync always # 每隔1秒将缓冲区数据写到AOF文件（默认）appendfsync everysec # 由操作系统决定何时将缓冲区内容写回磁盘appendfsync no</code></pre><p>三种策略对比：</p><p><img src="/imgs/blog1/image-20210725151654046-16855171063852.png"></p><h3 id="1-2-3-AOF文件重写"><a href="#1-2-3-AOF文件重写" class="headerlink" title="1.2.3.AOF文件重写"></a>1.2.3.AOF文件重写</h3><p>AOF的方式也同时带来了另一个问题。持久化文件会变的越来越大。为了压缩aof的持久化文件。redis提供了bgrewriteaof命令。将内存中的数据以命令的方式保存到临时文件中，同时会fork出一条新进程来将文件重写。</p><p>Redis也会在触发阈值时自动去重写AOF文件。阈值也可以在redis.conf中配置：</p><pre><code class="properties"># AOF文件相比上次增长超过多少百分比则触发bgrewriteaofauto-aof-rewrite-percentage 100# AOF文件达到一定大小触发bgrewriteaofauto-aof-rewrite-min-size 64mb </code></pre><p>重写aof文件的操作，并没有读取旧的aof文件，而是将整个内存中的数据库内容用命令的方式重写了一个新的aof文件，这点和快照有点类似。</p><h2 id="1-3-RDB与AOF对比"><a href="#1-3-RDB与AOF对比" class="headerlink" title="1.3.RDB与AOF对比"></a>1.3.RDB与AOF对比</h2><p>RDB和AOF各有优缺点，在实际开发中一般会<strong>结合</strong>两者来使用。</p><p><img src="/imgs/blog1/image-20210725151940515-16855171206073.png"></p>]]></content>
-      
-      
-      <categories>
-          
-          <category> 学习笔记 </category>
-          
-      </categories>
-      
-      
-        <tags>
-            
-            <tag> redis </tag>
-            
-        </tags>
-      
-    </entry>
-    
-    
-    
-    <entry>
       <title>innodb行锁实现方式</title>
       <link href="/2023/08/22/blog41/"/>
       <url>/2023/08/22/blog41/</url>
@@ -1122,81 +1197,6 @@
       <url>/2023/08/02/blog7/</url>
       
         <content type="html"><![CDATA[<h2 id="题目介绍"><a href="#题目介绍" class="headerlink" title="题目介绍"></a>题目介绍</h2><p><a href="https://leetcode.cn/problems/count-vowel-strings-in-ranges/description/">2559. 统计范围内的元音字符串数 - 力扣（Leetcode）</a></p><p>给你一个下标从 <strong>0</strong> 开始的字符串数组 <code>words</code> 以及一个二维整数数组 <code>queries</code> 。</p><p>每个查询 <code>queries[i] = [li, ri]</code> 会要求我们统计在 <code>words</code> 中下标在 <code>li</code> 到 <code>ri</code> 范围内（<strong>包含</strong> 这两个值）并且以元音开头和结尾的字符串的数目。</p><p>返回一个整数数组，其中数组的第 <code>i</code> 个元素对应第 <code>i</code> 个查询的答案。</p><p><strong>注意：</strong>元音字母是 <code>&#39;a&#39;</code>、<code>&#39;e&#39;</code>、<code>&#39;i&#39;</code>、<code>&#39;o&#39;</code> 和 <code>&#39;u&#39;</code> 。</p><p><strong>示例 1：</strong></p><pre><code>输入：words = [&quot;aba&quot;,&quot;bcb&quot;,&quot;ece&quot;,&quot;aa&quot;,&quot;e&quot;], queries = [[0,2],[1,4],[1,1]]输出：[2,3,0]解释：以元音开头和结尾的字符串是 &quot;aba&quot;、&quot;ece&quot;、&quot;aa&quot; 和 &quot;e&quot; 。查询 [0,2] 结果为 2（字符串 &quot;aba&quot; 和 &quot;ece&quot;）。查询 [1,4] 结果为 3（字符串 &quot;ece&quot;、&quot;aa&quot;、&quot;e&quot;）。查询 [1,1] 结果为 0 。返回结果 [2,3,0] 。</code></pre><p><strong>示例 2：</strong></p><pre><code>输入：words = [&quot;a&quot;,&quot;e&quot;,&quot;i&quot;], queries = [[0,2],[0,1],[2,2]]输出：[3,2,1]解释：每个字符串都满足这一条件，所以返回 [3,2,1] 。</code></pre><h2 id="题目思路"><a href="#题目思路" class="headerlink" title="题目思路"></a>题目思路</h2><p>​简单啊，直接暴力求解就完了</p><p>​写代码，测试，提交，，，，然后就超时了，，，，emmmmmmmmmm</p><p>​前缀和优化下，通过</p><h2 id="代码"><a href="#代码" class="headerlink" title="代码"></a>代码</h2><pre><code class="java">class Solution &#123;    public int[] vowelStrings(String[] words, int[][] queries) &#123;        Set&lt;Character&gt; vowels = Set.of(&#39;a&#39;, &#39;e&#39;, &#39;i&#39;, &#39;o&#39;, &#39;u&#39;);        int n = words.length;        int[] prefixSums = new int[n + 1];        for (int i = 0; i &lt; n; ++i) &#123;            char a = words[i].charAt(0), b = words[i].charAt(words[i].length() - 1);            if (vowels.contains(a) &amp;&amp; vowels.contains(b)) &#123;                prefixSums[i+1] = prefixSums[i] + 1;            &#125;else&#123;                prefixSums[i+1] = prefixSums[i];            &#125;        &#125;        int q = queries.length;        int[] ans = new int[q];        for (int i = 0; i &lt; q; i++) &#123;            int start = queries[i][0], end = queries[i][1];            ans[i] = prefixSums[end + 1] - prefixSums[start];        &#125;        return ans;    &#125;&#125;</code></pre>]]></content>
-      
-      
-      <categories>
-          
-          <category> 刷题笔记 </category>
-          
-      </categories>
-      
-      
-        <tags>
-            
-            <tag> 算法和数据结构 </tag>
-            
-        </tags>
-      
-    </entry>
-    
-    
-    
-    <entry>
-      <title>MySQL索引失效情况</title>
-      <link href="/2023/07/31/blog2/"/>
-      <url>/2023/07/31/blog2/</url>
-      
-        <content type="html"><![CDATA[<h1 id="MySQL索引失效"><a href="#MySQL索引失效" class="headerlink" title="MySQL索引失效"></a>MySQL索引失效</h1><p>​简单介绍下几种MySQL索引失效的常见情况。</p><h3 id="1-数据准备"><a href="#1-数据准备" class="headerlink" title="1.数据准备"></a>1.数据准备</h3><p>​首先准备一张数据表user_info并建立索引</p><pre><code class="mysql">`CREATE TABLE `user_info` ( `id` int(8) unsigned NOT NULL AUTO_INCREMENT COMMENT &#39;ID&#39;, `number` varchar(12) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT &#39;编号&#39;, `username` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT &#39;用户名&#39;, `age` int(11) DEFAULT NULL COMMENT &#39;年龄&#39;, `birthday` datetime DEFAULT CURRENT_TIMESTAMP COMMENT &#39;生日&#39;, PRIMARY KEY (`id`), KEY `union_idx` (`number`,`username`,`age`), KEY `create_time_idx` (`birthday`) );`</code></pre><p>该表包含3个索引：</p><p>主键：id</p><p>联合索引：number、username、age</p><p>普通索引：birthday</p><p>然后插入一些数据</p><pre><code class="mysql">INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;1244&#39;, &#39;Mercury&#39;, 23, &#39;2000-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;3546&#39;, &#39;Diana&#39;, 12, &#39;2011-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;1124&#39;, &#39;Mars&#39;, 77, &#39;1946-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;6426&#39;, &#39;Saturn&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;3525&#39;, &#39;Eureka&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;5245&#39;, &#39;Mercury1&#39;, 23, &#39;2000-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;3235246&#39;, &#39;Diana1&#39;, 12, &#39;2011-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;6346&#39;, &#39;Mars1&#39;, 77, &#39;1946-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;623461&#39;, &#39;Saturn1&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;235&#39;, &#39;Eureka1&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;11244&#39;, &#39;Mercury3&#39;, 23, &#39;2000-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;13546&#39;, &#39;Diana3&#39;, 12, &#39;2011-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;112244&#39;, &#39;Mars3&#39;, 77, &#39;1946-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;643126&#39;, &#39;Saturn3&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;35215&#39;, &#39;Eureka3&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;52145&#39;, &#39;Mercury4&#39;, 23, &#39;2000-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;32235246&#39;, &#39;Diana4&#39;, 12, &#39;2011-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;6332446&#39;, &#39;Mars4&#39;, 77, &#39;1946-01-01 00:00:00&#39;); INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;6231461&#39;, &#39;Saturn4&#39;, 32, &#39;1991-01-01 00:00:00&#39;);INSERT INTO user_info (id, number, username, age, birthday) VALUES (null, &#39;231115&#39;, &#39;Eureka4&#39;, 32, &#39;1991-01-01 00:00:00&#39;);</code></pre><p>注：测试MySQL版本为8.0.28</p><h3 id="2-案例测试"><a href="#2-案例测试" class="headerlink" title="2.案例测试"></a>2.案例测试</h3><h4 id="2-1-联合索引不满足最左匹配原则"><a href="#2-1-联合索引不满足最左匹配原则" class="headerlink" title="2.1 联合索引不满足最左匹配原则"></a>2.1 联合索引不满足最左匹配原则</h4><p>​最左前缀匹配原则：在MySQL建立联合索引时会遵守最左前缀匹配原则，即最左优先，在检索数据时从联合索引的最左列开始匹配。如本例中联合索引（number，username，age），若想查询走该索引，查询条件中应出现最左边的列，即number。</p><p>测试1：</p><pre><code class="mysql">explain select * from user_info where number = &#39;1244&#39;;</code></pre><p>运行结果：</p><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%951.png"></p><p>key为“union_idx”说明查询走了联合索引。</p><p>测试2：</p><pre><code class="mysql">explain select * from user_info where number = &#39;1244&#39; and age = 23;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%952.png"></p><p>测试2结果中‘key_len’与测试1相同，说明该查询虽然走了联合索引，但因未满足最左匹配原则（查询条件中未出现username），导致username之后的联合索引失效。若number使用范围查询如number&gt;‘1244’，后面的查询条件即使有username也不会生效，这里不做测试。</p><p>但是where后面查询列出现顺序不会影响索引，如</p><p>测试3：</p><pre><code class="mysql">explain select * from user_info where username = &#39;Mercury&#39; and number = &#39;1244&#39;;explain select * from user_info where number = &#39;1244&#39; and username = &#39;Mercury&#39;;</code></pre><p>上面两条语句‘ken_len’相同</p><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%953.png" alt="image-20230531203957562"></p><h4 id="2-2-索引列使用数学运算"><a href="#2-2-索引列使用数学运算" class="headerlink" title="2.2 索引列使用数学运算"></a>2.2 索引列使用数学运算</h4><p>测试4：</p><pre><code class="mysql">explain select * from user_info where id + 1 = 2;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%954.png"></p><p>查询类型为全表扫面，并未使用索引</p><h4 id="2-3-隐式类型转换"><a href="#2-3-隐式类型转换" class="headerlink" title="2.3 隐式类型转换"></a>2.3 隐式类型转换</h4><p>测试5：</p><pre><code class="mysql">explain select * from user_info where number = 1244;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%955.png" alt="测试5"></p><p>number字段为varchar类型，而查询条件为int，类型不匹配导致索引失效。</p><h4 id="2-4模糊查询以-开头"><a href="#2-4模糊查询以-开头" class="headerlink" title="2.4模糊查询以%开头"></a>2.4模糊查询以%开头</h4><p>测试6：</p><pre><code class="mysql">explain select * from user_info where number like &#39;%2&#39;;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%956.png" alt="测试6"></p><h4 id="2-5-使用or"><a href="#2-5-使用or" class="headerlink" title="2.5 使用or"></a>2.5 使用or</h4><p>测试7：</p><pre><code class="mysql">explain select * from user_info where id = 1 or age = 23;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%957.png" alt="测试7"></p><p>age列无索引，导致前面id列索引失效。使用or时切记两边查询条件都要有索引。</p><h4 id="2-6索引列使用函数"><a href="#2-6索引列使用函数" class="headerlink" title="2.6索引列使用函数"></a>2.6索引列使用函数</h4><p>测试8：</p><p>explain select * from user_info where SUBSTR(number, 2,3) &#x3D; ‘12’;</p><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%958.png" alt="测试8"></p><h4 id="2-7两列作比较或者运算"><a href="#2-7两列作比较或者运算" class="headerlink" title="2.7两列作比较或者运算"></a>2.7两列作比较或者运算</h4><p>测试9：</p><pre><code class="mysql">explain select * from user_info where id &lt; age;explain select * from user_info where id + age = 25;</code></pre><p><img src="/../imgs/blog2/%E6%B5%8B%E8%AF%959.png" alt="测试9"></p><h4 id="2-8其他"><a href="#2-8其他" class="headerlink" title="2.8其他"></a>2.8其他</h4><p>​使用不等于&lt;&gt;，not in， not exists， is not null 以及MySQL优化器认为走全表扫描效率更高的查询。好累啊不想做测试了，开摆。</p>]]></content>
-      
-      
-      <categories>
-          
-          <category> 学习笔记 </category>
-          
-      </categories>
-      
-      
-        <tags>
-            
-            <tag> MySQL </tag>
-            
-        </tags>
-      
-    </entry>
-    
-    
-    
-    <entry>
-      <title>无重复字符的最长子串</title>
-      <link href="/2023/07/21/blog3/"/>
-      <url>/2023/07/21/blog3/</url>
-      
-        <content type="html"><![CDATA[<h3 id="题目介绍"><a href="#题目介绍" class="headerlink" title="题目介绍"></a>题目介绍</h3><p>​题目链接：<a href="https://leetcode.cn/problems/longest-substring-without-repeating-characters/description/">3. 无重复字符的最长子串 - 力扣（Leetcode）</a></p><p>​给定一个字符串 <code>s</code> ，请你找出其中不含有重复字符的 <strong>最长子串</strong> 的长度。</p><p><strong>示例 1:</strong></p><pre><code>输入: s = &quot;abcabcbb&quot;输出: 3 解释: 因为无重复字符的最长子串是 &quot;abc&quot;，所以其长度为 3。</code></pre><p><strong>示例 2:</strong></p><pre><code>输入: s = &quot;bbbbb&quot;输出: 1解释: 因为无重复字符的最长子串是 &quot;b&quot;，所以其长度为 1。</code></pre><p><strong>示例 3:</strong></p><pre><code>输入: s = &quot;pwwkew&quot;输出: 3解释: 因为无重复字符的最长子串是 &quot;wke&quot;，所以其长度为 3。     请注意，你的答案必须是 子串 的长度，&quot;pwke&quot; 是一个子序列，不是子串。</code></pre><h3 id="题目思路"><a href="#题目思路" class="headerlink" title="题目思路"></a>题目思路</h3><p>​没啥好说的，一眼滑动窗口。。。</p><p>​以示例1为例，对于“abcabcbb”，定义两个指针（ left 和 right ），初始都指向字符串0位置，两个指针之间的字符串即为当前找到的子串，right指针向右遍历，使用hashmap记录出现过的字符和字符最后一次出现的位置，当前字串出现重复字符时（即hashmap中存在当前right指向的字符），将left指针移动到重复字符的下一个位置即可（map.get(s.charAt(i)) + 1），遍历过程中记录字串长度最大值。</p><h3 id="代码"><a href="#代码" class="headerlink" title="代码"></a>代码</h3><pre><code class="java">class Solution &#123;  public int lengthOfLongestSubstring(String s) &#123;​    if (s.length() &lt;=  1)&#123;​      return s.length();​    &#125;​    HashMap&lt;Character, Integer&gt; map = new HashMap&lt;Character, Integer&gt;();​    int ans = 0;​    int left = 0;​    for(int i = 0; i &lt; s.length(); i++)&#123;​      if(map.containsKey(s.charAt(i)))&#123;​        left = Math.max(left, map.get(s.charAt(i)) + 1);​      &#125;​      map.put(s.charAt(i), i);​      ans = Math.max(ans, i-left+1);​    &#125;​    return ans;  &#125;&#125;</code></pre>]]></content>
-      
-      
-      <categories>
-          
-          <category> 刷题笔记 </category>
-          
-      </categories>
-      
-      
-        <tags>
-            
-            <tag> 算法和数据结构 </tag>
-            
-        </tags>
-      
-    </entry>
-    
-    
-    
-    <entry>
-      <title>礼盒的最大甜蜜度</title>
-      <link href="/2023/07/01/blog5/"/>
-      <url>/2023/07/01/blog5/</url>
-      
-        <content type="html"><![CDATA[<h3 id="题目介绍"><a href="#题目介绍" class="headerlink" title="题目介绍"></a>题目介绍</h3><p>​题目链接：<a href="https://leetcode.cn/problems/longest-substring-without-repeating-characters/description/"><a href="https://leetcode.cn/problems/maximum-tastiness-of-candy-basket/description/">2517. 礼盒的最大甜蜜度 - 力扣（Leetcode）</a></a></p><p>​给你一个正整数数组 <code>price</code> ，其中 <code>price[i]</code> 表示第 <code>i</code> 类糖果的价格，另给你一个正整数 <code>k</code> 。</p><p>商店组合 <code>k</code> 类 <strong>不同</strong> 糖果打包成礼盒出售。礼盒的 <strong>甜蜜度</strong> 是礼盒中任意两种糖果 <strong>价格</strong> 绝对差的最小值。</p><p>返回礼盒的 <strong>最大</strong> 甜蜜度<em>。</em></p><p><strong>示例 1：</strong></p><pre><code>输入：price = [13,5,1,8,21,2], k = 3输出：8解释：选出价格分别为 [13,5,21] 的三类糖果。礼盒的甜蜜度为 min(|13 - 5|, |13 - 21|, |5 - 21|) = min(8, 8, 16) = 8 。可以证明能够取得的最大甜蜜度就是 8 。</code></pre><p><strong>示例 2：</strong></p><pre><code>输入：price = [1,3,1], k = 2输出：2解释：选出价格分别为 [1,3] 的两类糖果。 礼盒的甜蜜度为 min(|1 - 3|) = min(2) = 2 。可以证明能够取得的最大甜蜜度就是 2 。</code></pre><p><strong>示例 3：</strong></p><pre><code>输入：price = [7,7,7,7], k = 2输出：0解释：从现有的糖果中任选两类糖果，甜蜜度都会是 0 。</code></pre><h3 id="题目思路"><a href="#题目思路" class="headerlink" title="题目思路"></a>题目思路</h3><p>​最小最大，基本要想到二分了，直接二分甜蜜值，因为选择的差值跟顺序无关，我们可以排序后贪心，当前选择大于之前选择加甜蜜值就统计答案一次，如果最终次数大于等于tastiness，说明甜蜜值还可以更大，收缩左边界，否则收缩右边界。</p><h3 id="代码"><a href="#代码" class="headerlink" title="代码"></a>代码</h3><pre><code class="java">class Solution &#123;  public int maximumTastiness(int[] price, int k) &#123;​    Arrays.sort(price);​    int left = 0, right = price[price.length - 1];​    while (left +1 != right) &#123;​      int mid = (left + right) / 2;​      if (check(price, k, mid)) &#123;​        left = mid;​      &#125; else &#123;​        right = mid;​      &#125;​    &#125;​    return left;  &#125;  public boolean check(int[] price, int k, int tastiness) &#123;​    int prev = Integer.MIN_VALUE / 2;​    int cnt = 0;​    for (int p : price) &#123;​      if (p - prev &gt;= tastiness) &#123;​        cnt++;​        prev = p;​      &#125;​    &#125;​    return cnt &gt;= k;  &#125;&#125;</code></pre>]]></content>
       
       
       <categories>
